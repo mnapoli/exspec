@@ -10,7 +10,7 @@ exspec parses `.feature` files, launches a Claude agent restricted to browser-on
 npm install -D @mnapoli/exspec
 ```
 
-## Prerequisites
+### Prerequisites
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 
@@ -45,11 +45,12 @@ Create an `features/exspec.md` file. Its content is passed to the AI agent as co
 ```markdown
 # QA Configuration
 
-## Application
-
 URL: http://localhost:3000
 
-This is an e-commerce app. The user is a store manager. For detailed feature documentation, see the `docs/` directory.
+## Application
+
+This is an e-commerce app. The user is a store manager.
+For detailed feature documentation, see the `docs/` directory.
 
 ## Authentication
 
