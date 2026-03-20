@@ -1,0 +1,53 @@
+{
+  "name": "exspec",
+  "version": "0.1.0",
+  "description": "Executable specs — run Gherkin feature files with an AI agent in the browser",
+  "type": "module",
+  "bin": {
+    "exspec": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "prompt-template.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "gherkin",
+    "bdd",
+    "testing",
+    "executable-specifications",
+    "playwright",
+    "ai",
+    "claude",
+    "browser-testing",
+    "feature-tests"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mnapoli/exspec.git"
+  },
+  "homepage": "https://github.com/mnapoli/exspec",
+  "bugs": {
+    "url": "https://github.com/mnapoli/exspec/issues"
+  },
+  "author": "Matthieu Napoli",
+  "license": "MIT",
+  "dependencies": {
+    "@cucumber/gherkin": "^29.0.0",
+    "@cucumber/messages": "^25.0.0",
+    "@playwright/mcp": "^0.0.68",
+    "dotenv": "^16.4.0",
+    "dotenv-expand": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.2.0",
+    "vitest": "^4.1.0"
+  }
+}
