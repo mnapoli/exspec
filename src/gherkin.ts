@@ -8,12 +8,13 @@ import { readFileSync } from "fs";
 import type { ParsedFeature, ParsedScenario } from "./types.js";
 import { getDomain } from "./discovery.js";
 
+const uuidFn = IdGenerator.uuid();
+
 export function parseFeature(
   filePath: string,
   projectRoot: string,
 ): ParsedFeature {
   const rawContent = readFileSync(filePath, "utf-8");
-  const uuidFn = IdGenerator.uuid();
   const builder = new AstBuilder(uuidFn);
   const matcher = new GherkinClassicTokenMatcher();
   const parser = new Parser(builder, matcher);

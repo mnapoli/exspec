@@ -2,15 +2,15 @@ import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { resolve, join } from "path";
 import type { DomainResult, RunTotals } from "./types.js";
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
 export function generateRunId(): string {
   const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 }
 
 export function formatTime(): string {
   const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
 
@@ -45,7 +45,7 @@ export function appendDomainResults(
   const lines: string[] = [""];
 
   if (result.isError) {
-    lines.push(`## ${result.domain} — ERREUR`, "");
+    lines.push(`## ${result.domain} — ERROR`, "");
     lines.push(`  Agent crashed or returned no results.`);
     if (result.rawOutput) {
       lines.push(`  Raw output: ${result.rawOutput.slice(0, 500)}`);
@@ -55,7 +55,10 @@ export function appendDomainResults(
     const failed = result.scenarios.filter((s) => s.status === "fail").length;
     const skipped = result.scenarios.filter((s) => s.status === "skip").length;
 
-    lines.push(`## ${result.domain} — ${passed} passed, ${failed} failed, ${skipped} skipped`, "");
+    lines.push(
+      `## ${result.domain} — ${passed} passed, ${failed} failed, ${skipped} skipped`,
+      "",
+    );
 
     for (const scenario of result.scenarios) {
       if (scenario.status === "pass") {
@@ -81,10 +84,7 @@ export function appendDomainResults(
   appendFileSync(resultsPath, lines.join("\n"));
 }
 
-export function appendSummary(
-  resultsPath: string,
-  totals: RunTotals,
-): void {
+export function appendSummary(resultsPath: string, totals: RunTotals): void {
   const content = [
     "---\n",
     "## Summary\n",

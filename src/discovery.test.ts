@@ -11,9 +11,9 @@ describe("getDomain", () => {
   });
 
   test("extracts domain from nested subdirectory", () => {
-    expect(
-      getDomain("/project/features/Auth/Admin/users.feature", root),
-    ).toBe("Auth");
+    expect(getDomain("/project/features/Auth/Admin/users.feature", root)).toBe(
+      "Auth",
+    );
   });
 
   test("returns 'default' for files directly in features/", () => {

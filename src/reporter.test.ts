@@ -80,7 +80,7 @@ describe("appendDomainResults", () => {
 
     appendDomainResults(resultsPath, result);
     const content = readFileSync(resultsPath, "utf-8");
-    expect(content).toContain("Broken — ERREUR");
+    expect(content).toContain("Broken — ERROR");
     expect(content).toContain("some error output");
   });
 });

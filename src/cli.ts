@@ -22,12 +22,15 @@ const args = process.argv.slice(2);
 let target: string | undefined;
 let filter: string | null = null;
 let failFast = false;
+let headed = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--filter" && args[i + 1]) {
     filter = args[++i];
   } else if (args[i] === "--fail-fast") {
     failFast = true;
+  } else if (args[i] === "--headed") {
+    headed = true;
   } else if (!args[i].startsWith("--")) {
     target = args[i];
   }
@@ -47,7 +50,13 @@ if (!existsSync(configPath)) {
 const configContent = expandVars(readFileSync(configPath, "utf-8"));
 
 // Discover and parse features
-const featureFiles = discoverFeatures(projectRoot, target);
+let featureFiles: string[];
+try {
+  featureFiles = discoverFeatures(projectRoot, target);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
 if (featureFiles.length === 0) {
   console.error("No .feature files found.");
   process.exit(1);
@@ -64,20 +73,14 @@ if (filter) {
 }
 
 const domains = groupByDomain(features);
-const totalScenarios = features.reduce(
-  (sum, f) => sum + f.scenarios.length,
-  0,
-);
+const totalScenarios = features.reduce((sum, f) => sum + f.scenarios.length, 0);
 
 // Display test plan
 console.log(
   `\nSuite: ${totalScenarios} scenario(s) in ${domains.size} domain(s)\n`,
 );
 for (const [domain, domainFeatures] of domains) {
-  const count = domainFeatures.reduce(
-    (sum, f) => sum + f.scenarios.length,
-    0,
-  );
+  const count = domainFeatures.reduce((sum, f) => sum + f.scenarios.length, 0);
   console.log(`  ${domain} (${count} scenarios)`);
   for (const f of domainFeatures) {
     for (const s of f.scenarios) {
@@ -105,7 +108,7 @@ for (const [domain, domainFeatures] of domains) {
     screenshotsDir,
   });
 
-  const result = await runDomain(prompt, domain, projectRoot);
+  const result = await runDomain(prompt, domain, projectRoot, { headed });
   appendDomainResults(resultsPath, result);
 
   if (result.isError) {
@@ -128,7 +131,10 @@ for (const [domain, domainFeatures] of domains) {
   }
   console.log();
 
-  if (failFast && (result.isError || result.scenarios.some((s) => s.status === "fail"))) {
+  if (
+    failFast &&
+    (result.isError || result.scenarios.some((s) => s.status === "fail"))
+  ) {
     console.log("--fail-fast: stopping after first failure.");
     break;
   }

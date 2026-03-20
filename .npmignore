@@ -1,0 +1,9 @@
+src/
+*.test.ts
+.github/
+features/
+tsconfig.json
+eslint.config.js
+.prettierrc
+.prettierignore
+.npmignore

@@ -14,7 +14,10 @@
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "dev": "tsx src/cli.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint src",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src"
   },
   "keywords": [
     "gherkin",
@@ -37,6 +40,12 @@
   },
   "author": "Matthieu Napoli",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@cucumber/gherkin": "^29.0.0",
     "@cucumber/messages": "^25.0.0",
@@ -45,9 +54,14 @@
     "dotenv-expand": "^12.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.5.0",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
     "tsx": "^4.0.0",
     "typescript": "^5.2.0",
+    "typescript-eslint": "^8.57.1",
     "vitest": "^4.1.0"
   }
 }

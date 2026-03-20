@@ -6,49 +6,59 @@ import { createRequire } from "module";
 import type { DomainResult, ScenarioResult } from "./types.js";
 
 const require = createRequire(import.meta.url);
-const playwrightBin = join(dirname(require.resolve("@playwright/mcp/package.json")), "cli.js");
+const playwrightBin = join(
+  dirname(require.resolve("@playwright/mcp/package.json")),
+  "cli.js",
+);
 
-function getMcpConfigPath(): string {
+function getMcpConfigPath(headed: boolean): string {
   const config = {
     mcpServers: {
       playwright: {
         type: "stdio",
         command: playwrightBin,
-        args: ["--headless"],
+        args: headed ? [] : ["--headless"],
       },
     },
   };
-  const configPath = join(tmpdir(), "exspec-mcp.json");
+  const suffix = headed ? "-headed" : "";
+  const configPath = join(tmpdir(), `exspec-mcp${suffix}.json`);
   const json = JSON.stringify(config);
-  // Only write if content changed
   if (!existsSync(configPath) || readFileSync(configPath, "utf-8") !== json) {
     writeFileSync(configPath, json);
   }
   return configPath;
 }
 
-const mcpConfigPath = getMcpConfigPath();
+export interface RunOptions {
+  headed?: boolean;
+}
 
 export async function runDomain(
   prompt: string,
   domain: string,
   projectRoot: string,
+  options: RunOptions = {},
 ): Promise<DomainResult> {
+  const mcpConfigPath = getMcpConfigPath(options.headed ?? false);
   try {
-    const { result, cost, duration } = await invokeClaude(prompt, projectRoot);
+    const { result, cost, duration } = await invokeClaude(
+      prompt,
+      projectRoot,
+      mcpConfigPath,
+    );
     const scenarios = parseScenarioResults(result);
 
     return {
       domain,
       scenarios,
       rawOutput: result,
-      isError: scenarios.length === 0,
+      isError: false,
       cost,
       duration,
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
     return {
       domain,
       scenarios: [],
@@ -64,7 +74,11 @@ interface ClaudeOutput {
   duration?: number;
 }
 
-function invokeClaude(prompt: string, cwd: string): Promise<ClaudeOutput> {
+function invokeClaude(
+  prompt: string,
+  cwd: string,
+  mcpConfigPath: string,
+): Promise<ClaudeOutput> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       "claude",
@@ -88,7 +102,7 @@ function invokeClaude(prompt: string, cwd: string): Promise<ClaudeOutput> {
     let cost: number | undefined;
     let duration: number | undefined;
 
-    child.stdout.on("data", (data) => {
+    child.stdout.on("data", (data: Buffer) => {
       buffer += data.toString();
 
       // Process complete JSON lines
@@ -109,9 +123,10 @@ function invokeClaude(prompt: string, cwd: string): Promise<ClaudeOutput> {
     function handleStreamEvent(event: Record<string, unknown>) {
       switch (event.type) {
         case "assistant": {
-          // Assistant message with text content
           const message = event.message as Record<string, unknown> | undefined;
-          const content = message?.content as Array<Record<string, unknown>> | undefined;
+          const content = message?.content as
+            | Array<Record<string, unknown>>
+            | undefined;
           if (content) {
             for (const block of content) {
               if (block.type === "text") {
@@ -122,7 +137,6 @@ function invokeClaude(prompt: string, cwd: string): Promise<ClaudeOutput> {
           break;
         }
         case "tool_use": {
-          // Tool being called
           const toolName = event.tool_name as string | undefined;
           if (toolName) {
             const short = toolName.replace("mcp__playwright__browser_", "");
@@ -131,12 +145,10 @@ function invokeClaude(prompt: string, cwd: string): Promise<ClaudeOutput> {
           break;
         }
         case "tool_result": {
-          // Tool returned
           process.stderr.write(".");
           break;
         }
         case "result": {
-          // Final result
           resultText = (event.result as string) ?? "";
           cost = event.cost_usd as number | undefined;
           duration = event.duration_ms as number | undefined;
@@ -146,7 +158,7 @@ function invokeClaude(prompt: string, cwd: string): Promise<ClaudeOutput> {
     }
 
     let stderr = "";
-    child.stderr.on("data", (data) => {
+    child.stderr.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
 
@@ -185,27 +197,11 @@ export function parseScenarioResults(output: string): ScenarioResult[] {
   const lines = output.split("\n");
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    const passMatch = line.match(/^### PASS:\s*(.+)/);
-    if (passMatch) {
+    const match = lines[i].match(/^### (PASS|FAIL|SKIP):\s*(.+)/);
+    if (match) {
+      const status = match[1].toLowerCase() as "pass" | "fail" | "skip";
       const details = collectDetails(lines, i + 1);
-      results.push({ name: passMatch[1].trim(), status: "pass", details });
-      continue;
-    }
-
-    const failMatch = line.match(/^### FAIL:\s*(.+)/);
-    if (failMatch) {
-      const details = collectDetails(lines, i + 1);
-      results.push({ name: failMatch[1].trim(), status: "fail", details });
-      continue;
-    }
-
-    const skipMatch = line.match(/^### SKIP:\s*(.+)/);
-    if (skipMatch) {
-      const details = collectDetails(lines, i + 1);
-      results.push({ name: skipMatch[1].trim(), status: "skip", details });
-      continue;
+      results.push({ name: match[2].trim(), status, details });
     }
   }
 

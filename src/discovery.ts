@@ -12,8 +12,7 @@ export function discoverFeatures(
   const fullPath = resolve(projectRoot, target);
 
   if (!existsSync(fullPath)) {
-    console.error(`Path not found: ${fullPath}`);
-    process.exit(1);
+    throw new Error(`Path not found: ${fullPath}`);
   }
 
   if (statSync(fullPath).isDirectory()) {

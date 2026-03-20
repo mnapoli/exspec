@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import type { ParsedFeature } from "./types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const templatePath = resolve(__dirname, "..", "prompt-template.md");
 
 export function buildPrompt(options: {
   features: ParsedFeature[];
@@ -11,7 +12,6 @@ export function buildPrompt(options: {
   configContent: string;
   screenshotsDir: string;
 }): string {
-  const templatePath = resolve(__dirname, "..", "prompt-template.md");
   let template = readFileSync(templatePath, "utf-8");
 
   const featureContent = options.features
