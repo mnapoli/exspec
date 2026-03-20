@@ -43,9 +43,9 @@ Total cost: $0.0523
 Results written to features/exspec/2026-03-20-1430.md
 ```
 
-Unlike [Cucumber](https://github.com/cucumber/cucumber-js) or [Behat](https://github.com/Behat/Behat), there's **no glue code** — no step definitions, no page objects, no regex matchers to wire up. The AI agent reads your specs and navigates the app like a real user would. It figures out where to click, what to fill in, and what to check on screen.
+Unlike [Cucumber](https://github.com/cucumber/cucumber-js) or [Behat](https://github.com/Behat/Behat), there's **no glue code** - no step definitions, no page objects, no regex matchers to wire up. The AI agent reads your specs and navigates the app like a real user would. It figures out where to click, what to fill in, and what to check on screen.
 
-This also means specs aren't brittle. Traditional browser tests break when a CSS class changes or a button moves. The AI agent adapts to the actual UI — and if the UX is so broken that a human couldn't complete the task, the spec fails too. That's a feature, not a bug.
+This also means specs aren't brittle. Traditional browser tests break when a CSS class changes or a button moves. The AI agent adapts to the actual UI - and if the UX is so broken that a human couldn't complete the task, the spec fails too. That's a feature, not a bug.
 
 Specs are written in [Gherkin](https://cucumber.io/docs/gherkin/reference/), a simple Given/When/Then format. You can write them in [70+ languages](https://cucumber.io/docs/gherkin/languages/) (English, French, German, Spanish, etc.).
 
@@ -113,7 +113,7 @@ npx exspec --headed
 
 ### `features/exspec.md`
 
-This file is passed to the AI agent as context. Describe your app, provide credentials, set the URL — anything the agent needs to know to test your application.
+This file is passed to the AI agent as context. Describe your app, provide credentials, set the URL - anything the agent needs to know to test your application.
 
 ```markdown
 URL: http://localhost:3000

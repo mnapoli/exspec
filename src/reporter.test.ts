@@ -94,7 +94,10 @@ describe("appendSummary", () => {
 
   test("writes totals", () => {
     mkdirSync(tmpRoot, { recursive: true });
-    const { resultsPath, screenshotsDir } = initResultsFile(tmpRoot, "test-run");
+    const { resultsPath, screenshotsDir } = initResultsFile(
+      tmpRoot,
+      "test-run",
+    );
 
     const totals: RunTotals = {
       passed: 5,
