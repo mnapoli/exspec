@@ -4,6 +4,12 @@
 
 exspec parses `.feature` files, launches a Claude agent restricted to browser-only interaction (Playwright, headless), and produces a test report. Feature files can be written in any language supported by Gherkin (English, French, German, Spanish, [70+ languages](https://cucumber.io/docs/gherkin/languages/)).
 
+## Install
+
+```bash
+npm install -D @mnapoli/exspec
+```
+
 ## Prerequisites
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
@@ -25,6 +31,9 @@ npx exspec features/Auth/Login.feature --filter "invalid password"
 
 # Stop at first failure
 npx exspec --fail-fast
+
+# Run with visible browser (for debugging)
+npx exspec --headed
 ```
 
 ## Configuration
@@ -70,7 +79,7 @@ This is useful for dynamic URLs across environments (e.g. with git worktrees). I
 3. Groups scenarios by domain (subdirectory of `features/`)
 4. For each domain, invokes Claude CLI with:
    - Only Playwright tools available (browser-only, no database or code access)
-   - Playwright in headless mode
+   - Playwright in headless mode (or headed with `--headed`)
    - Feature content + context docs + config as prompt
 5. Parses results (PASS/FAIL/SKIP) and writes them to `features/exspec/`
 

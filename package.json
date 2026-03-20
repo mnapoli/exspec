@@ -1,5 +1,5 @@
 {
-  "name": "exspec",
+  "name": "@mnapoli/exspec",
   "version": "0.1.0",
   "description": "Executable specs — run Gherkin feature files with an AI agent in the browser",
   "type": "module",
@@ -11,7 +11,7 @@
     "prompt-template.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/add-shebang.js",
     "prepublishOnly": "npm run build",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
