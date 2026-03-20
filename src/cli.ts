@@ -141,7 +141,7 @@ for (const [domain, domainFeatures] of domains) {
 }
 
 // Summary
-appendSummary(resultsPath, totals);
+appendSummary(resultsPath, totals, screenshotsDir);
 
 console.log("─".repeat(40));
 console.log(

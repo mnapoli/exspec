@@ -94,7 +94,7 @@ describe("appendSummary", () => {
 
   test("writes totals", () => {
     mkdirSync(tmpRoot, { recursive: true });
-    const { resultsPath } = initResultsFile(tmpRoot, "test-run");
+    const { resultsPath, screenshotsDir } = initResultsFile(tmpRoot, "test-run");
 
     const totals: RunTotals = {
       passed: 5,
@@ -102,7 +102,7 @@ describe("appendSummary", () => {
       skipped: 1,
       errors: 0,
     };
-    appendSummary(resultsPath, totals);
+    appendSummary(resultsPath, totals, screenshotsDir);
 
     const content = readFileSync(resultsPath, "utf-8");
     expect(content).toContain("5 passed, 2 failed, 1 skipped, 0 errors");

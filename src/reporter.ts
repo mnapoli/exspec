@@ -1,6 +1,15 @@
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
 import { resolve, join } from "path";
 import type { DomainResult, RunTotals } from "./types.js";
+
+const MAX_RUNS = 5;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -22,13 +31,15 @@ export function initResultsFile(
   const screenshotsDir = resolve(resultsDir, runId);
   const resultsPath = resolve(resultsDir, `${runId}.md`);
 
-  mkdirSync(screenshotsDir, { recursive: true });
+  mkdirSync(resultsDir, { recursive: true });
 
   // Create .gitignore on first run
   const gitignorePath = join(resultsDir, ".gitignore");
   if (!existsSync(gitignorePath)) {
     writeFileSync(gitignorePath, "*\n!.gitignore\n");
   }
+
+  pruneOldRuns(resultsDir);
 
   writeFileSync(
     resultsPath,
@@ -84,7 +95,11 @@ export function appendDomainResults(
   appendFileSync(resultsPath, lines.join("\n"));
 }
 
-export function appendSummary(resultsPath: string, totals: RunTotals): void {
+export function appendSummary(
+  resultsPath: string,
+  totals: RunTotals,
+  screenshotsDir: string,
+): void {
   const content = [
     "---\n",
     "## Summary\n",
@@ -93,4 +108,30 @@ export function appendSummary(resultsPath: string, totals: RunTotals): void {
   ].join("\n");
 
   appendFileSync(resultsPath, content);
+
+  cleanupEmptyDir(screenshotsDir);
+}
+
+function cleanupEmptyDir(dir: string): void {
+  if (!existsSync(dir)) return;
+  const entries = readdirSync(dir);
+  if (entries.length === 0) {
+    rmSync(dir);
+  }
+}
+
+function pruneOldRuns(resultsDir: string): void {
+  const entries = readdirSync(resultsDir);
+  const runIds = entries
+    .filter((e) => e.match(/^\d{4}-\d{2}-\d{2}-\d{4}\.md$/))
+    .map((e) => e.replace(/\.md$/, ""))
+    .sort();
+
+  while (runIds.length >= MAX_RUNS) {
+    const oldest = runIds.shift()!;
+    const mdPath = join(resultsDir, `${oldest}.md`);
+    const dirPath = join(resultsDir, oldest);
+    if (existsSync(mdPath)) rmSync(mdPath);
+    if (existsSync(dirPath)) rmSync(dirPath, { recursive: true });
+  }
 }
