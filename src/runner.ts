@@ -89,6 +89,7 @@ function invokeClaude(
         "mcp__playwright__*",
         "--output-format",
         "stream-json",
+        "--verbose",
         "--model",
         "sonnet",
         "--mcp-config",
@@ -152,6 +153,9 @@ function invokeClaude(
           resultText = (event.result as string) ?? "";
           cost = event.cost_usd as number | undefined;
           duration = event.duration_ms as number | undefined;
+          if (event.is_error) {
+            resultText = `Error: ${resultText}`;
+          }
           break;
         }
       }
@@ -176,11 +180,9 @@ function invokeClaude(
       process.stderr.write("\n");
 
       if (code !== 0) {
-        reject(
-          new Error(
-            `claude exited with code ${code}${stderr ? `: ${stderr.slice(0, 500)}` : ""}`,
-          ),
-        );
+        const detail =
+          resultText || stderr.slice(0, 500) || `exit code ${code}`;
+        reject(new Error(detail));
       } else {
         resolve({ result: resultText, cost, duration });
       }
