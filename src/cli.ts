@@ -111,7 +111,13 @@ for (const [domain, domainFeatures] of domains) {
   const expectedScenarioNames = domainFeatures.flatMap((f) =>
     f.scenarios.map((s) => s.name),
   );
-  const result = await runDomain(prompt, domain, projectRoot, expectedScenarioNames, { headed });
+  const result = await runDomain(
+    prompt,
+    domain,
+    projectRoot,
+    expectedScenarioNames,
+    { headed },
+  );
   appendDomainResults(resultsPath, result);
 
   if (result.isError) {
@@ -127,8 +133,12 @@ for (const [domain, domainFeatures] of domains) {
     const p = result.scenarios.filter((s) => s.status === "pass").length;
     const f = result.scenarios.filter((s) => s.status === "fail").length;
     const sk = result.scenarios.filter((s) => s.status === "skip").length;
-    const ne = result.scenarios.filter((s) => s.status === "not_executed").length;
-    console.log(`  ${p} passed, ${f} failed, ${sk} skipped, ${ne} not executed`);
+    const ne = result.scenarios.filter(
+      (s) => s.status === "not_executed",
+    ).length;
+    console.log(
+      `  ${p} passed, ${f} failed, ${sk} skipped, ${ne} not executed`,
+    );
   }
 
   if (result.cost) {

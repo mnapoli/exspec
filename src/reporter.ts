@@ -65,7 +65,9 @@ export function appendDomainResults(
     const passed = result.scenarios.filter((s) => s.status === "pass").length;
     const failed = result.scenarios.filter((s) => s.status === "fail").length;
     const skipped = result.scenarios.filter((s) => s.status === "skip").length;
-    const notExecuted = result.scenarios.filter((s) => s.status === "not_executed").length;
+    const notExecuted = result.scenarios.filter(
+      (s) => s.status === "not_executed",
+    ).length;
 
     lines.push(
       `## ${result.domain} — ${passed} passed, ${failed} failed, ${skipped} skipped, ${notExecuted} not executed`,

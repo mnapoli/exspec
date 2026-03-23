@@ -53,7 +53,11 @@ export async function runDomain(
       mcpConfigPath,
     );
     const reported = parseScenarioResults(result);
-    const scenarios = reconcileScenarios(reported, expectedScenarioNames, result);
+    const scenarios = reconcileScenarios(
+      reported,
+      expectedScenarioNames,
+      result,
+    );
 
     return {
       domain,
@@ -190,8 +194,7 @@ function invokeClaude(
       process.stderr.write("\n");
 
       if (code !== 0) {
-        const detail =
-          resultText || truncate(stderr) || `exit code ${code}`;
+        const detail = resultText || truncate(stderr) || `exit code ${code}`;
         reject(new Error(detail));
       } else {
         resolve({ result: resultText, cost, duration });
@@ -231,7 +234,9 @@ export function reconcileScenarios(
   // Warn about and discard unexpected scenario names from the agent
   for (const name of reportedNames) {
     if (!expectedSet.has(name)) {
-      console.error(`  ⚠ Agent reported unknown scenario: "${name}" (ignoring)`);
+      console.error(
+        `  ⚠ Agent reported unknown scenario: "${name}" (ignoring)`,
+      );
     }
   }
   const known = reported.filter((s) => expectedSet.has(s.name));
