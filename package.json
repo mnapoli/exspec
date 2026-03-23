@@ -1,6 +1,6 @@
 {
   "name": "@mnapoli/exspec",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Executable specs - run Gherkin feature files with an AI agent in the browser",
   "type": "module",
   "bin": {
