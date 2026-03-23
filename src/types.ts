@@ -12,7 +12,7 @@ export interface ParsedScenario {
 
 export interface ScenarioResult {
   name: string;
-  status: "pass" | "fail" | "skip";
+  status: "pass" | "fail" | "skip" | "not_executed";
   details?: string;
 }
 
@@ -29,6 +29,6 @@ export interface RunTotals {
   passed: number;
   failed: number;
   skipped: number;
-  errors: number;
+  notExecuted: number;
   cost?: number;
 }

@@ -1,5 +1,5 @@
-import { describe, test, expect } from "vitest";
-import { parseScenarioResults } from "./runner.js";
+import { describe, test, expect, vi } from "vitest";
+import { parseScenarioResults, reconcileScenarios } from "./runner.js";
 
 describe("parseScenarioResults", () => {
   test("parses PASS scenarios", () => {
@@ -90,5 +90,65 @@ Some detail
 
     const results = parseScenarioResults(output);
     expect(results[0].details).toBe("Some detail");
+  });
+});
+
+describe("reconcileScenarios", () => {
+  test("returns reported as-is when all expected are present", () => {
+    const reported = [
+      { name: "Login", status: "pass" as const, details: "OK" },
+      { name: "Logout", status: "fail" as const, details: "Error" },
+    ];
+    const result = reconcileScenarios(reported, ["Login", "Logout"], "output");
+    expect(result).toEqual(reported);
+  });
+
+  test("adds not_executed for missing scenarios with empty output", () => {
+    const result = reconcileScenarios([], ["Login", "Logout"], "");
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ name: "Login", status: "not_executed" });
+    expect(result[0].details).toBe("Agent returned empty output");
+    expect(result[1]).toMatchObject({ name: "Logout", status: "not_executed" });
+  });
+
+  test("adds not_executed with output excerpt when agent produced no results", () => {
+    const result = reconcileScenarios([], ["Login"], "Some agent rambling");
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe("not_executed");
+    expect(result[0].details).toContain("Output excerpt:");
+    expect(result[0].details).toContain("Some agent rambling");
+  });
+
+  test("adds not_executed for partially missing scenarios", () => {
+    const reported = [
+      { name: "Login", status: "pass" as const, details: "OK" },
+    ];
+    const result = reconcileScenarios(reported, ["Login", "Logout"], "output");
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ name: "Login", status: "pass" });
+    expect(result[1]).toMatchObject({ name: "Logout", status: "not_executed" });
+    expect(result[1].details).toContain("completed 1 scenario(s)");
+  });
+
+  test("discards unknown scenarios and warns", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const reported = [
+      { name: "Login", status: "pass" as const, details: "OK" },
+      { name: "Unexpected", status: "pass" as const, details: "?" },
+    ];
+    const result = reconcileScenarios(reported, ["Login"], "output");
+    expect(result).toEqual([{ name: "Login", status: "pass", details: "OK" }]);
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining('unknown scenario: "Unexpected"'),
+    );
+    spy.mockRestore();
+  });
+
+  test("truncates long output excerpt with ellipsis", () => {
+    const longOutput = "x".repeat(600);
+    const result = reconcileScenarios([], ["Login"], longOutput);
+    expect(result[0].details).toContain("...");
+    // 500 chars + "..." = excerpt is truncated
+    expect(result[0].details!.length).toBeLessThan(600);
   });
 });

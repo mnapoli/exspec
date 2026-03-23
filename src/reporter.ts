@@ -65,9 +65,10 @@ export function appendDomainResults(
     const passed = result.scenarios.filter((s) => s.status === "pass").length;
     const failed = result.scenarios.filter((s) => s.status === "fail").length;
     const skipped = result.scenarios.filter((s) => s.status === "skip").length;
+    const notExecuted = result.scenarios.filter((s) => s.status === "not_executed").length;
 
     lines.push(
-      `## ${result.domain} — ${passed} passed, ${failed} failed, ${skipped} skipped`,
+      `## ${result.domain} — ${passed} passed, ${failed} failed, ${skipped} skipped, ${notExecuted} not executed`,
       "",
     );
 
@@ -79,6 +80,11 @@ export function appendDomainResults(
         }
       } else if (scenario.status === "fail") {
         lines.push(`  ✗ ${scenario.name}`);
+        if (scenario.details) {
+          lines.push(`    → ${scenario.details.split("\n").join("\n    ")}`);
+        }
+      } else if (scenario.status === "not_executed") {
+        lines.push(`  ✗ ${scenario.name} (not executed)`);
         if (scenario.details) {
           lines.push(`    → ${scenario.details.split("\n").join("\n    ")}`);
         }
@@ -103,7 +109,7 @@ export function appendSummary(
   const content = [
     "---\n",
     "## Summary\n",
-    `Total: ${totals.passed} passed, ${totals.failed} failed, ${totals.skipped} skipped, ${totals.errors} errors\n`,
+    `Total: ${totals.passed} passed, ${totals.failed} failed, ${totals.skipped} skipped, ${totals.notExecuted} not executed\n`,
     `Finished at ${formatTime()}\n`,
   ].join("\n");
 

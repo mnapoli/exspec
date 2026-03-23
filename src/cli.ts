@@ -96,7 +96,7 @@ const { resultsPath, screenshotsDir } = initResultsFile(projectRoot, runId);
 console.log(`Results: features/exspec/${runId}.md\n`);
 
 // Execute tests domain by domain
-const totals: RunTotals = { passed: 0, failed: 0, skipped: 0, errors: 0 };
+const totals: RunTotals = { passed: 0, failed: 0, skipped: 0, notExecuted: 0 };
 
 for (const [domain, domainFeatures] of domains) {
   console.log(`▶ ${domain}...`);
@@ -108,21 +108,27 @@ for (const [domain, domainFeatures] of domains) {
     screenshotsDir,
   });
 
-  const result = await runDomain(prompt, domain, projectRoot, { headed });
+  const expectedScenarioNames = domainFeatures.flatMap((f) =>
+    f.scenarios.map((s) => s.name),
+  );
+  const result = await runDomain(prompt, domain, projectRoot, expectedScenarioNames, { headed });
   appendDomainResults(resultsPath, result);
 
   if (result.isError) {
-    totals.errors++;
-    console.log(`  ✗ ERROR`);
+    totals.notExecuted += result.scenarios.length;
+    console.log(`  ✗ ERROR (${result.scenarios.length} not executed)`);
   } else {
     for (const s of result.scenarios) {
       if (s.status === "pass") totals.passed++;
       else if (s.status === "fail") totals.failed++;
+      else if (s.status === "not_executed") totals.notExecuted++;
       else totals.skipped++;
     }
     const p = result.scenarios.filter((s) => s.status === "pass").length;
     const f = result.scenarios.filter((s) => s.status === "fail").length;
-    console.log(`  ${p} passed, ${f} failed`);
+    const sk = result.scenarios.filter((s) => s.status === "skip").length;
+    const ne = result.scenarios.filter((s) => s.status === "not_executed").length;
+    console.log(`  ${p} passed, ${f} failed, ${sk} skipped, ${ne} not executed`);
   }
 
   if (result.cost) {
@@ -145,11 +151,13 @@ appendSummary(resultsPath, totals, screenshotsDir);
 
 console.log("─".repeat(40));
 console.log(
-  `Total: ${totals.passed} passed, ${totals.failed} failed, ${totals.skipped} skipped, ${totals.errors} errors`,
+  `Total: ${totals.passed} passed, ${totals.failed} failed, ${totals.skipped} skipped, ${totals.notExecuted} not executed`,
 );
 if (totals.cost) {
   console.log(`Total cost: $${totals.cost.toFixed(4)}`);
 }
 console.log(`\nResults written to features/exspec/${runId}.md`);
 
-process.exit(totals.failed > 0 || totals.errors > 0 ? 1 : 0);
+const hasFailures = totals.failed > 0 || totals.notExecuted > 0;
+const nothingPassed = totals.passed === 0;
+process.exit(hasFailures || nothingPassed ? 1 : 0);

@@ -64,9 +64,29 @@ describe("appendDomainResults", () => {
 
     appendDomainResults(resultsPath, result);
     const content = readFileSync(resultsPath, "utf-8");
-    expect(content).toContain("Auth — 1 passed, 1 failed, 0 skipped");
+    expect(content).toContain("Auth — 1 passed, 1 failed");
     expect(content).toContain("✓ Login");
     expect(content).toContain("✗ Logout");
+  });
+
+  test("writes not_executed scenarios", () => {
+    setup();
+    const result: DomainResult = {
+      domain: "OD",
+      scenarios: [
+        { name: "Création d'une OD", status: "not_executed", details: "Agent returned empty output" },
+        { name: "Suppression d'une OD", status: "not_executed", details: "Agent returned empty output" },
+      ],
+      rawOutput: "",
+      isError: false,
+    };
+
+    appendDomainResults(resultsPath, result);
+    const content = readFileSync(resultsPath, "utf-8");
+    expect(content).toContain("OD — 0 passed, 0 failed, 0 skipped, 2 not executed");
+    expect(content).toContain("✗ Création d'une OD (not executed)");
+    expect(content).toContain("→ Agent returned empty output");
+    expect(content).toContain("✗ Suppression d'une OD (not executed)");
   });
 
   test("writes error domain", () => {
@@ -103,11 +123,11 @@ describe("appendSummary", () => {
       passed: 5,
       failed: 2,
       skipped: 1,
-      errors: 0,
+      notExecuted: 0,
     };
     appendSummary(resultsPath, totals, screenshotsDir);
 
     const content = readFileSync(resultsPath, "utf-8");
-    expect(content).toContain("5 passed, 2 failed, 1 skipped, 0 errors");
+    expect(content).toContain("5 passed, 2 failed, 1 skipped, 0 not executed");
   });
 });
