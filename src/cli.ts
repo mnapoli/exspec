@@ -3,6 +3,8 @@
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { loadDotenv, expandVars } from "./env.js";
+import { parseConfigFile } from "./config.js";
+import { runSetupCommands } from "./setup.js";
 import { discoverFeatures } from "./discovery.js";
 import { parseFeature, filterScenarios, groupByDomain } from "./gherkin.js";
 import { buildPrompt } from "./prompt.js";
@@ -23,6 +25,7 @@ let target: string | undefined;
 let filter: string | null = null;
 let failFast = false;
 let headed = false;
+let verbose = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--filter" && args[i + 1]) {
@@ -31,6 +34,8 @@ for (let i = 0; i < args.length; i++) {
     failFast = true;
   } else if (args[i] === "--headed") {
     headed = true;
+  } else if (args[i] === "--verbose") {
+    verbose = true;
   } else if (!args[i].startsWith("--")) {
     target = args[i];
   }
@@ -46,8 +51,12 @@ if (!existsSync(configPath)) {
   console.error("Create a features/exspec.md file with your QA configuration.");
   process.exit(1);
 }
-// Resolve $VAR and ${VAR} references in the config using process.env
-const configContent = expandVars(readFileSync(configPath, "utf-8"));
+// Parse frontmatter config and markdown content separately
+const { config, content: markdownContent } = parseConfigFile(
+  readFileSync(configPath, "utf-8"),
+);
+// Resolve $VAR and ${VAR} references only in the markdown content
+const configContent = expandVars(markdownContent);
 
 // Discover and parse features
 let featureFiles: string[];
@@ -74,6 +83,20 @@ if (filter) {
 
 const domains = groupByDomain(features);
 const totalScenarios = features.reduce((sum, f) => sum + f.scenarios.length, 0);
+
+// Run setup commands (after validation, before test execution)
+if (config.setup && config.setup.length > 0) {
+  console.log("Running setup commands...\n");
+  try {
+    await runSetupCommands(config.setup, projectRoot, { verbose });
+  } catch (error) {
+    console.error(
+      `\n${error instanceof Error ? error.message : String(error)}`,
+    );
+    process.exit(1);
+  }
+  console.log();
+}
 
 // Display test plan
 console.log(

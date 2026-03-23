@@ -132,6 +132,28 @@ Use the `test@example.com` / `password` credentials for authentication.
 Resolution: 1920x1080
 ```
 
+### Setup commands
+
+You can run shell commands before tests start using YAML frontmatter in `exspec.md`. This is useful for resetting the database, seeding data, or any other preparation needed before testing.
+
+```markdown
+---
+setup: php artisan migrate:fresh --seed
+---
+
+URL: http://localhost:3000
+...
+```
+
+Setup commands run once before all tests, on the local machine. You can also provide a list of commands:
+
+```markdown
+---
+setup:
+  - php artisan migrate:fresh --seed
+---
+```
+
 ### Environment variables
 
 If your project has a `.env` file, exspec loads it automatically. You can reference variables in `exspec.md` with `$VAR` or `${VAR}` syntax:
