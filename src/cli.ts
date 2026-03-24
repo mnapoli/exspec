@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { readFileSync, existsSync } from "fs";
-import { resolve } from "path";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import { loadDotenv, expandVars } from "./env.js";
 import { parseConfigFile } from "./config.js";
 import { runSetupCommands } from "./setup.js";
@@ -46,6 +47,29 @@ function extractFailInfo(details?: string): {
 
 // Parse arguments
 const args = process.argv.slice(2);
+
+if (args.includes("--version") || args.includes("-v")) {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const pkg = JSON.parse(
+    readFileSync(resolve(__dirname, "..", "package.json"), "utf-8"),
+  );
+  console.log(pkg.version);
+  process.exit(0);
+}
+
+if (args.includes("--help") || args.includes("-h")) {
+  console.log(`Usage: exspec [path] [options]
+
+Options:
+  --filter <name>   Run only scenarios matching <name>
+  --fail-fast       Stop after first failure
+  --headed          Run with visible browser
+  --verbose         Show detailed setup output
+  -v, --version     Show version
+  -h, --help        Show this help`);
+  process.exit(0);
+}
+
 let target: string | undefined;
 let filter: string | null = null;
 let failFast = false;
