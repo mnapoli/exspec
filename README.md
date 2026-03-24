@@ -5,6 +5,8 @@ AI writes code. AI writes tests. But confidence comes from tests you actually re
 **exspec runs plain-text specs in a real browser using AI.**
 No test code, no step definitions. Write specs as acceptance criteria, then let agents build and run exspec to check they pass.
 
+![](./screenshot.png)
+
 ## Example
 
 ```gherkin
