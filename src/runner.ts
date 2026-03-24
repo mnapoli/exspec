@@ -142,27 +142,12 @@ function invokeClaude(
           const content = message?.content as
             | Array<Record<string, unknown>>
             | undefined;
-          if (content) {
-            for (const block of content) {
-              if (block.type === "text") {
-                process.stderr.write(".");
-              }
-            }
-          }
+          // silent — progress output removed
           break;
         }
-        case "tool_use": {
-          const toolName = event.tool_name as string | undefined;
-          if (toolName) {
-            const short = toolName.replace("mcp__playwright__browser_", "");
-            process.stderr.write(`  [${short}]`);
-          }
+        case "tool_use":
+        case "tool_result":
           break;
-        }
-        case "tool_result": {
-          process.stderr.write(".");
-          break;
-        }
         case "result": {
           resultText = (event.result as string) ?? "";
           cost = event.cost_usd as number | undefined;
@@ -190,8 +175,6 @@ function invokeClaude(
           // ignore
         }
       }
-
-      process.stderr.write("\n");
 
       if (code !== 0) {
         const detail = resultText || truncate(stderr) || `exit code ${code}`;

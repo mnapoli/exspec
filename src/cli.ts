@@ -19,6 +19,31 @@ import type { RunTotals } from "./types.js";
 
 const projectRoot = resolve(process.cwd());
 
+// ANSI color helpers (respect NO_COLOR standard)
+const nc = "NO_COLOR" in process.env;
+const green = (s: string) => (nc ? s : `\x1b[32m${s}\x1b[0m`);
+const red = (s: string) => (nc ? s : `\x1b[31m${s}\x1b[0m`);
+const dim = (s: string) => (nc ? s : `\x1b[2m${s}\x1b[0m`);
+const bold = (s: string) => (nc ? s : `\x1b[1m${s}\x1b[0m`);
+
+function extractFailInfo(details?: string): {
+  step?: string;
+  error?: string;
+} {
+  if (!details) return {};
+  const stepMatch = details.match(/\*\*Failed step\*\*:\s*(.+)/);
+  const errorMatch = details.match(/\*\*Error\*\*:\s*(.+)/);
+  if (stepMatch || errorMatch) {
+    return { step: stepMatch?.[1]?.trim(), error: errorMatch?.[1]?.trim() };
+  }
+  // Fallback: first 2 non-empty lines
+  const lines = details
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return { step: lines[0], error: lines[1] };
+}
+
 // Parse arguments
 const args = process.argv.slice(2);
 let target: string | undefined;
@@ -84,6 +109,11 @@ if (filter) {
 const domains = groupByDomain(features);
 const totalScenarios = features.reduce((sum, f) => sum + f.scenarios.length, 0);
 
+// Initialize results
+const runId = generateRunId();
+const { resultsPath, screenshotsDir } = initResultsFile(projectRoot, runId);
+console.log(`Results: features/exspec/${runId}.md\n`);
+
 // Run setup commands (after validation, before test execution)
 if (config.setup && config.setup.length > 0) {
   console.log("Running setup commands...\n");
@@ -100,30 +130,17 @@ if (config.setup && config.setup.length > 0) {
 
 // Display test plan
 console.log(
-  `\nSuite: ${totalScenarios} scenario(s) in ${domains.size} domain(s)\n`,
+  `Suite: ${totalScenarios} scenario(s) in ${domains.size} domain(s)\n`,
 );
 for (const [domain, domainFeatures] of domains) {
   const count = domainFeatures.reduce((sum, f) => sum + f.scenarios.length, 0);
   console.log(`  ${domain} (${count} scenarios)`);
-  for (const f of domainFeatures) {
-    for (const s of f.scenarios) {
-      console.log(`    · ${s.name}`);
-    }
-  }
 }
-console.log();
-
-// Initialize results
-const runId = generateRunId();
-const { resultsPath, screenshotsDir } = initResultsFile(projectRoot, runId);
-console.log(`Results: features/exspec/${runId}.md\n`);
 
 // Execute tests domain by domain
 const totals: RunTotals = { passed: 0, failed: 0, skipped: 0, notExecuted: 0 };
 
 for (const [domain, domainFeatures] of domains) {
-  console.log(`▶ ${domain}...`);
-
   const prompt = buildPrompt({
     features: domainFeatures,
     scenarioFilter: filter,
@@ -143,38 +160,42 @@ for (const [domain, domainFeatures] of domains) {
   );
   appendDomainResults(resultsPath, result);
 
-  if (result.isError) {
-    totals.notExecuted += result.scenarios.length;
-    console.log(`  ✗ ERROR (${result.scenarios.length} not executed)`);
-  } else {
-    for (const s of result.scenarios) {
-      if (s.status === "pass") totals.passed++;
-      else if (s.status === "fail") totals.failed++;
-      else if (s.status === "not_executed") totals.notExecuted++;
-      else totals.skipped++;
-    }
-    const p = result.scenarios.filter((s) => s.status === "pass").length;
-    const f = result.scenarios.filter((s) => s.status === "fail").length;
-    const sk = result.scenarios.filter((s) => s.status === "skip").length;
-    const ne = result.scenarios.filter(
-      (s) => s.status === "not_executed",
-    ).length;
-    console.log(
-      `  ${p} passed, ${f} failed, ${sk} skipped, ${ne} not executed`,
-    );
-  }
-
   if (result.cost) {
     totals.cost = (totals.cost ?? 0) + result.cost;
-    console.log(`  Cost: $${result.cost.toFixed(4)}`);
   }
-  console.log();
+
+  if (result.isError) {
+    totals.notExecuted += result.scenarios.length;
+    for (const s of result.scenarios) {
+      console.log(`    ${red("✗")} ${s.name}`);
+      console.log(`      ${dim("Error: Agent crashed or returned no results")}`);
+    }
+  } else {
+    for (const s of result.scenarios) {
+      if (s.status === "pass") {
+        totals.passed++;
+        console.log(`    ${green("✓")} ${s.name}`);
+      } else if (s.status === "fail") {
+        totals.failed++;
+        console.log(`    ${red("✗")} ${s.name}`);
+        const { step, error } = extractFailInfo(s.details);
+        if (step) console.log(`      ${dim(`> ${step}`)}`);
+        if (error) console.log(`      ${red(`${bold("Error:")} ${error}`)}`);
+      } else if (s.status === "skip") {
+        totals.skipped++;
+        console.log(`    ${dim(`○ ${s.name}`)}`);
+      } else {
+        totals.notExecuted++;
+        console.log(`    ${dim(`- ${s.name} (not executed)`)}`);
+      }
+    }
+  }
 
   if (
     failFast &&
     (result.isError || result.scenarios.some((s) => s.status === "fail"))
   ) {
-    console.log("--fail-fast: stopping after first failure.");
+    console.log("\n--fail-fast: stopping after first failure.");
     break;
   }
 }
@@ -182,14 +203,11 @@ for (const [domain, domainFeatures] of domains) {
 // Summary
 appendSummary(resultsPath, totals, screenshotsDir);
 
-console.log("─".repeat(40));
+console.log("\n" + "─".repeat(40));
 console.log(
   `Total: ${totals.passed} passed, ${totals.failed} failed, ${totals.skipped} skipped, ${totals.notExecuted} not executed`,
 );
-if (totals.cost) {
-  console.log(`Total cost: $${totals.cost.toFixed(4)}`);
-}
-console.log(`\nResults written to features/exspec/${runId}.md`);
+console.log(`\nDetailed results in features/exspec/${runId}.md`);
 
 const hasFailures = totals.failed > 0 || totals.notExecuted > 0;
 const nothingPassed = totals.passed === 0;

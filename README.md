@@ -29,18 +29,15 @@ $ npx exspec
 Suite: 2 scenario(s) in 1 domain(s)
 
   orders (2 scenarios)
-    · Place an order and check it appears in the dashboard
-    · Cancel an order
-
-▶ orders...
-  2 passed, 0 failed
-  Cost: $0.0523
+    ✓ Place an order and check it appears in the dashboard
+    ✗ Cancel an order
+      > `And the customer should see a cancellation notice`
+      Error: No cancellation notice is visible on the page.
 
 ────────────────────────────────────────
-Total: 2 passed, 0 failed, 0 skipped, 0 errors
-Total cost: $0.0523
+Total: 1 passed, 1 failed, 0 skipped, 0 not executed
 
-Results written to features/exspec/2026-03-20-1430.md
+Detailed results in features/exspec/2026-03-20-1430.md
 ```
 
 Unlike [Cucumber](https://github.com/cucumber/cucumber-js) or [Behat](https://github.com/Behat/Behat), there's **no glue code** - no step definitions, no page objects, no regex matchers to wire up. The AI agent reads your specs and navigates the app like a real user would. It figures out where to click, what to fill in, and what to check on screen.

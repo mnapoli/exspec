@@ -14,6 +14,7 @@
     "build": "tsc && node scripts/add-shebang.js",
     "prepublishOnly": "npm run build",
     "dev": "tsx src/cli.ts",
+    "fixtures": "npm run build && cd fixtures && node ../dist/cli.js",
     "test": "vitest run",
     "lint": "eslint src",
     "format": "prettier --write src",
