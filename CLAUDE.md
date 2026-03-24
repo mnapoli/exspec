@@ -31,3 +31,11 @@ npm run fixtures     # build + run exspec on fixtures/
 ```
 
 This runs the local build against simple scenarios to verify CLI output and end-to-end behavior. These features intentionally contain failing scenarios to test reporting of failures.
+
+## Releasing
+
+The version in `package.json` is managed by CI — never set it manually.
+
+1. Push to `main`
+2. Create a GitHub release (the tag becomes the version)
+3. A GitHub Actions workflow updates `package.json` with the tag version and publishes to NPM
