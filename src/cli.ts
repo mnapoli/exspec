@@ -168,7 +168,9 @@ for (const [domain, domainFeatures] of domains) {
     totals.notExecuted += result.scenarios.length;
     for (const s of result.scenarios) {
       console.log(`    ${red("✗")} ${s.name}`);
-      console.log(`      ${dim("Error: Agent crashed or returned no results")}`);
+      console.log(
+        `      ${dim("Error: Agent crashed or returned no results")}`,
+      );
     }
   } else {
     for (const s of result.scenarios) {
