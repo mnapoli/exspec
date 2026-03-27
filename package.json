@@ -50,7 +50,7 @@
   "dependencies": {
     "@cucumber/gherkin": "^29.0.0",
     "@cucumber/messages": "^25.0.0",
-    "@playwright/mcp": "^0.0.68",
+    "@playwright/cli": "^0.1.1",
     "dotenv": "^16.4.0",
     "dotenv-expand": "^12.0.0",
     "yaml": "^2.8.3"

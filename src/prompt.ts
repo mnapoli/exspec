@@ -11,6 +11,7 @@ export function buildPrompt(options: {
   scenarioFilter: string | null;
   configContent: string;
   screenshotsDir: string;
+  headed?: boolean;
 }): string {
   let template = readFileSync(templatePath, "utf-8");
 
@@ -25,11 +26,14 @@ export function buildPrompt(options: {
         .join(", ")
     : "ALL";
 
+  const headedMode = options.headed ? "headed (visible browser)" : "headless";
+
   template = template
     .replaceAll("{FEATURE_CONTENT}", featureContent)
     .replaceAll("{SCENARIOS_TO_EXECUTE}", scenariosToExecute)
     .replaceAll("{CONFIG_CONTEXT}", options.configContent)
-    .replaceAll("{SCREENSHOTS_DIR}", options.screenshotsDir);
+    .replaceAll("{SCREENSHOTS_DIR}", options.screenshotsDir)
+    .replaceAll("{HEADED_MODE}", headedMode);
 
   return template;
 }

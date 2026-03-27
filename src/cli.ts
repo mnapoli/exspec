@@ -170,6 +170,7 @@ for (const [domain, domainFeatures] of domains) {
     scenarioFilter: filter,
     configContent,
     screenshotsDir,
+    headed,
   });
 
   const expectedScenarioNames = domainFeatures.flatMap((f) =>
@@ -180,7 +181,6 @@ for (const [domain, domainFeatures] of domains) {
     domain,
     projectRoot,
     expectedScenarioNames,
-    { headed },
   );
   appendDomainResults(resultsPath, result);
 

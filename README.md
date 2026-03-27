@@ -164,7 +164,7 @@ URL: $APP_URL
 ## How it works
 
 1. Discovers `.feature` files in `features/` and groups them by subdirectory
-2. For each group, launches a Claude agent with only Playwright browser tools (no database, no code, no shell access)
+2. For each group, launches a Claude agent with only [playwright-cli](https://github.com/microsoft/playwright-cli) browser commands (no database, no code, no other shell access)
 3. The agent reads your specs and interacts with the browser autonomously
 4. Results (PASS/FAIL/SKIP) are written to `features/exspec/`
 

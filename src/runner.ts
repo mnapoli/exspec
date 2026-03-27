@@ -1,41 +1,8 @@
 import { spawn } from "child_process";
-import { writeFileSync, existsSync, readFileSync } from "fs";
-import { join, dirname } from "path";
-import { tmpdir } from "os";
-import { createRequire } from "module";
 import type { DomainResult, ScenarioResult } from "./types.js";
-
-const require = createRequire(import.meta.url);
-const playwrightBin = join(
-  dirname(require.resolve("@playwright/mcp/package.json")),
-  "cli.js",
-);
 
 function truncate(text: string, max = 500): string {
   return text.length > max ? text.slice(0, max) + "..." : text;
-}
-
-function getMcpConfigPath(headed: boolean): string {
-  const config = {
-    mcpServers: {
-      playwright: {
-        type: "stdio",
-        command: playwrightBin,
-        args: headed ? [] : ["--headless"],
-      },
-    },
-  };
-  const suffix = headed ? "-headed" : "";
-  const configPath = join(tmpdir(), `exspec-mcp${suffix}.json`);
-  const json = JSON.stringify(config);
-  if (!existsSync(configPath) || readFileSync(configPath, "utf-8") !== json) {
-    writeFileSync(configPath, json);
-  }
-  return configPath;
-}
-
-export interface RunOptions {
-  headed?: boolean;
 }
 
 export async function runDomain(
@@ -43,15 +10,9 @@ export async function runDomain(
   domain: string,
   projectRoot: string,
   expectedScenarioNames: string[],
-  options: RunOptions = {},
 ): Promise<DomainResult> {
-  const mcpConfigPath = getMcpConfigPath(options.headed ?? false);
   try {
-    const { result, cost, duration } = await invokeClaude(
-      prompt,
-      projectRoot,
-      mcpConfigPath,
-    );
+    const { result, cost, duration } = await invokeClaude(prompt, projectRoot);
     const reported = parseScenarioResults(result);
     const scenarios = reconcileScenarios(
       reported,
@@ -88,11 +49,7 @@ interface ClaudeOutput {
   duration?: number;
 }
 
-function invokeClaude(
-  prompt: string,
-  cwd: string,
-  mcpConfigPath: string,
-): Promise<ClaudeOutput> {
+function invokeClaude(prompt: string, cwd: string): Promise<ClaudeOutput> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       "claude",
@@ -100,14 +57,12 @@ function invokeClaude(
         "-p",
         prompt,
         "--allowedTools",
-        "mcp__playwright__*",
+        "Bash(playwright-cli:*)",
         "--output-format",
         "stream-json",
         "--verbose",
         "--model",
         "sonnet",
-        "--mcp-config",
-        mcpConfigPath,
       ],
       { cwd, stdio: ["ignore", "pipe", "pipe"] },
     );
@@ -137,14 +92,8 @@ function invokeClaude(
 
     function handleStreamEvent(event: Record<string, unknown>) {
       switch (event.type) {
-        case "assistant": {
-          const message = event.message as Record<string, unknown> | undefined;
-          const content = message?.content as
-            | Array<Record<string, unknown>>
-            | undefined;
-          // silent — progress output removed
+        case "assistant":
           break;
-        }
         case "tool_use":
         case "tool_result":
           break;
