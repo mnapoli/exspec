@@ -15,7 +15,7 @@ server.tool(
   "report_scenario_result",
   "Report the result of a scenario after executing it",
   {
-    name: z.string().describe("Exact scenario name from the Feature file"),
+    id: z.string().describe("Scenario ID (e.g. s1, s2) from the scenario list"),
     status: z
       .enum(["pass", "fail", "skip"])
       .describe("Test result: pass, fail, or skip"),
@@ -26,13 +26,10 @@ server.tool(
         "Details: what was verified (pass), error info (fail), or reason (skip)",
       ),
   },
-  async ({ name, status, details }) => {
-    appendFileSync(
-      outputPath,
-      JSON.stringify({ name, status, details }) + "\n",
-    );
+  async ({ id, status, details }) => {
+    appendFileSync(outputPath, JSON.stringify({ id, status, details }) + "\n");
     return {
-      content: [{ type: "text", text: `Recorded: ${name} → ${status}` }],
+      content: [{ type: "text", text: `Recorded: ${id} → ${status}` }],
     };
   },
 );

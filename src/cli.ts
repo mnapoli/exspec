@@ -8,7 +8,7 @@ import { parseConfigFile } from "./config.js";
 import { runSetupCommands } from "./setup.js";
 import { discoverFeatures } from "./discovery.js";
 import { parseFeature, filterScenarios, groupByDomain } from "./gherkin.js";
-import { buildPrompt } from "./prompt.js";
+import { buildPrompt, buildScenarioMappings } from "./prompt.js";
 import { runDomain, type RunCallbacks } from "./runner.js";
 import {
   generateRunId,
@@ -89,6 +89,8 @@ for (let i = 0; i < args.length; i++) {
     target = args[i];
   }
 }
+
+const startTime = Date.now();
 
 // Load .env if it exists (populates process.env)
 loadDotenv(projectRoot);
@@ -187,16 +189,15 @@ for (const [domain, domainFeatures] of domains) {
   const count = domainFeatures.reduce((sum, f) => sum + f.scenarios.length, 0);
   console.log(`\n  ${bold(domain)} (${count} scenarios)`);
 
+  const scenarioMappings = buildScenarioMappings(domainFeatures);
+
   const prompt = buildPrompt({
     features: domainFeatures,
     scenarioFilter: filter,
     configContent,
     screenshotsDir,
+    scenarioMappings,
   });
-
-  const expectedScenarioNames = domainFeatures.flatMap((f) =>
-    f.scenarios.map((s) => s.name),
-  );
 
   // Track scenarios displayed in real-time to avoid duplication
   const displayedScenarios = new Set<string>();
@@ -217,7 +218,7 @@ for (const [domain, domainFeatures] of domains) {
     prompt,
     domain,
     projectRoot,
-    expectedScenarioNames,
+    scenarioMappings,
     { headed },
     callbacks,
   );
@@ -250,6 +251,11 @@ console.log("\n" + "─".repeat(40));
 console.log(
   `Total: ${totals.passed} passed, ${totals.failed} failed, ${totals.skipped} skipped, ${totals.notExecuted} not executed`,
 );
+const elapsed = Math.round((Date.now() - startTime) / 1000);
+const minutes = Math.floor(elapsed / 60);
+const seconds = elapsed % 60;
+const duration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+console.log(`Duration: ${duration}`);
 console.log(`\nDetailed results in features/exspec/${runId}.md`);
 
 const hasFailures = totals.failed > 0 || totals.notExecuted > 0;

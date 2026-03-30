@@ -6,6 +6,7 @@ import { tmpdir } from "os";
 import { randomBytes } from "crypto";
 import { createRequire } from "module";
 import type { DomainResult, ScenarioResult } from "./types.js";
+import type { ScenarioMapping } from "./prompt.js";
 
 const require = createRequire(import.meta.url);
 const playwrightBin = join(
@@ -54,7 +55,7 @@ export async function runDomain(
   prompt: string,
   domain: string,
   projectRoot: string,
-  expectedScenarioNames: string[],
+  scenarioMappings: ScenarioMapping[],
   options: RunOptions = {},
   callbacks: RunCallbacks = {},
 ): Promise<DomainResult> {
@@ -62,19 +63,28 @@ export async function runDomain(
   const jsonlPath = join(tmpdir(), `exspec-results-${id}.jsonl`);
   const mcpConfigPath = writeMcpConfig(options.headed ?? false, jsonlPath);
 
+  const idToName = new Map(scenarioMappings.map((m) => [m.id, m.name]));
+
+  // Wrap onScenarioResult to resolve ID → name
+  const wrappedCallbacks: RunCallbacks = {
+    ...callbacks,
+    onScenarioResult: callbacks.onScenarioResult
+      ? (s) => {
+          const name = idToName.get(s.name) ?? s.name;
+          callbacks.onScenarioResult!({ ...s, name });
+        }
+      : undefined,
+  };
+
   try {
     const { result, cost, duration, activityLog } = await invokeClaude(
       prompt,
       projectRoot,
       mcpConfigPath,
-      callbacks,
+      wrappedCallbacks,
     );
     const reported = readJsonlResults(jsonlPath);
-    const scenarios = reconcileScenarios(
-      reported,
-      expectedScenarioNames,
-      result,
-    );
+    const scenarios = reconcileScenarios(reported, scenarioMappings, result);
 
     return {
       domain,
@@ -90,11 +100,7 @@ export async function runDomain(
     // Even on error, check if partial results were recorded
     const reported = readJsonlResults(jsonlPath);
     if (reported.length > 0) {
-      const scenarios = reconcileScenarios(
-        reported,
-        expectedScenarioNames,
-        message,
-      );
+      const scenarios = reconcileScenarios(reported, scenarioMappings, message);
       return {
         domain,
         scenarios,
@@ -106,8 +112,8 @@ export async function runDomain(
     }
     return {
       domain,
-      scenarios: expectedScenarioNames.map((name) => ({
-        name,
+      scenarios: scenarioMappings.map((m) => ({
+        name: m.name,
         status: "not_executed" as const,
         details: `Agent error: ${truncate(message)}`,
       })),
@@ -165,9 +171,10 @@ function invokeClaude(
       [
         "-p",
         prompt,
+        // Comma-separated in a single arg — space-separated would require shell
+        // quoting (e.g. "Bash(git:*) Edit") which doesn't work with spawn args.
         "--allowedTools",
-        "mcp__playwright__*",
-        "mcp__exspec__*",
+        "mcp__playwright__*,mcp__exspec__*",
         "--output-format",
         "stream-json",
         "--verbose",
@@ -221,13 +228,14 @@ function invokeClaude(
               activityLog.push(entry);
               callbacks.onActivity?.(entry);
 
-              // Emit real-time scenario result
+              // Emit real-time scenario result (name holds the id here,
+              // resolved to actual name by wrappedCallbacks)
               if (
                 toolName === "mcp__exspec__report_scenario_result" &&
                 callbacks.onScenarioResult
               ) {
                 callbacks.onScenarioResult({
-                  name: input.name as string,
+                  name: input.id as string,
                   status: input.status as "pass" | "fail" | "skip",
                   details: input.details as string | undefined,
                 });
@@ -278,18 +286,24 @@ function invokeClaude(
   });
 }
 
-export function readJsonlResults(path: string): ScenarioResult[] {
+interface JsonlResult {
+  id: string;
+  status: "pass" | "fail" | "skip";
+  details?: string;
+}
+
+export function readJsonlResults(path: string): JsonlResult[] {
   if (!existsSync(path)) return [];
 
   const content = readFileSync(path, "utf-8").trim();
   if (!content) return [];
 
-  const results: ScenarioResult[] = [];
+  const results: JsonlResult[] = [];
   for (const line of content.split("\n")) {
     try {
-      const { name, status, details } = JSON.parse(line);
-      if (name && status) {
-        results.push({ name, status, details });
+      const { id, status, details } = JSON.parse(line);
+      if (id && status) {
+        results.push({ id, status, details });
       }
     } catch {
       // Skip malformed lines
@@ -299,29 +313,36 @@ export function readJsonlResults(path: string): ScenarioResult[] {
 }
 
 export function reconcileScenarios(
-  reported: ScenarioResult[],
-  expectedNames: string[],
+  reported: JsonlResult[],
+  mappings: ScenarioMapping[],
   rawOutput: string,
 ): ScenarioResult[] {
-  const expectedSet = new Set(expectedNames);
-  const reportedNames = new Set(reported.map((s) => s.name));
+  const idToName = new Map(mappings.map((m) => [m.id, m.name]));
+  const expectedIds = new Set(mappings.map((m) => m.id));
+  const reportedIds = new Set(reported.map((r) => r.id));
 
-  // Warn about and discard unexpected scenario names from the agent
-  for (const name of reportedNames) {
-    if (!expectedSet.has(name)) {
+  // Warn about and discard unexpected scenario IDs from the agent
+  for (const id of reportedIds) {
+    if (!expectedIds.has(id)) {
       console.error(
-        `  ⚠ Agent reported unknown scenario: "${name}" (ignoring)`,
+        `  ⚠ Agent reported unknown scenario ID: "${id}" (ignoring)`,
       );
     }
   }
-  const known = reported.filter((s) => expectedSet.has(s.name));
+  const known: ScenarioResult[] = reported
+    .filter((r) => expectedIds.has(r.id))
+    .map((r) => ({
+      name: idToName.get(r.id)!,
+      status: r.status,
+      details: r.details,
+    }));
 
-  const missingNames = expectedNames.filter((name) => !reportedNames.has(name));
-  if (missingNames.length === 0) return known;
+  const missingMappings = mappings.filter((m) => !reportedIds.has(m.id));
+  if (missingMappings.length === 0) return known;
 
   const reason = inferNotExecutedReason(known, rawOutput);
-  const missing = missingNames.map((name) => ({
-    name,
+  const missing = missingMappings.map((m) => ({
+    name: m.name,
     status: "not_executed" as const,
     details: reason,
   }));

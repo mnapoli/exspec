@@ -85,7 +85,7 @@ After each significant action, check the browser for error indicators:
 
 After executing each scenario, report the result immediately by calling the `mcp__exspec__report_scenario_result` tool with:
 
-- **name**: the exact scenario name as written in the Feature file
+- **id**: the scenario ID (e.g. `s1`, `s2`, ...) as listed in "Scenarios to execute" above
 - **status**: `pass`, `fail`, or `skip`
 - **details**:
   - PASS — brief confirmation of what was verified, including actual values seen

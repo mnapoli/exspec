@@ -91,7 +91,7 @@ describe("mcp-reporter", () => {
       params: {
         name: "report_scenario_result",
         arguments: {
-          name: "User can login",
+          id: "s1",
           status: "pass",
           details: "Login succeeded",
         },
@@ -105,7 +105,7 @@ describe("mcp-reporter", () => {
       params: {
         name: "report_scenario_result",
         arguments: {
-          name: "User sees dashboard",
+          id: "s2",
           status: "fail",
           details:
             "**Failed step**: Then I see dashboard\n**Error**: Not found",
@@ -123,9 +123,9 @@ describe("mcp-reporter", () => {
     const lines = content.split("\n").map((l) => JSON.parse(l));
 
     expect(lines).toEqual([
-      { name: "User can login", status: "pass", details: "Login succeeded" },
+      { id: "s1", status: "pass", details: "Login succeeded" },
       {
-        name: "User sees dashboard",
+        id: "s2",
         status: "fail",
         details: "**Failed step**: Then I see dashboard\n**Error**: Not found",
       },

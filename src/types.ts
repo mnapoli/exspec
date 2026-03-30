@@ -8,6 +8,7 @@ export interface ParsedFeature {
 
 export interface ParsedScenario {
   name: string;
+  id?: string;
 }
 
 export interface ScenarioResult {

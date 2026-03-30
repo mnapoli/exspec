@@ -1,6 +1,33 @@
 import { describe, test, expect } from "vitest";
-import { buildPrompt } from "./prompt.js";
+import { buildPrompt, buildScenarioMappings } from "./prompt.js";
 import type { ParsedFeature } from "./types.js";
+
+describe("buildScenarioMappings", () => {
+  test("assigns sequential IDs across features", () => {
+    const features: ParsedFeature[] = [
+      {
+        name: "Login",
+        filePath: "/features/login.feature",
+        domain: "Auth",
+        rawContent: "",
+        scenarios: [{ name: "Valid login" }, { name: "Invalid login" }],
+      },
+      {
+        name: "Register",
+        filePath: "/features/register.feature",
+        domain: "Auth",
+        rawContent: "",
+        scenarios: [{ name: "New user" }],
+      },
+    ];
+    const mappings = buildScenarioMappings(features);
+    expect(mappings).toEqual([
+      { id: "s1", name: "Valid login" },
+      { id: "s2", name: "Invalid login" },
+      { id: "s3", name: "New user" },
+    ]);
+  });
+});
 
 describe("buildPrompt", () => {
   const feature: ParsedFeature = {
@@ -11,12 +38,15 @@ describe("buildPrompt", () => {
     scenarios: [{ name: "Valid login" }],
   };
 
+  const mappings = [{ id: "s1", name: "Valid login" }];
+
   test("includes feature content", () => {
     const prompt = buildPrompt({
       features: [feature],
       scenarioFilter: null,
       configContent: "URL: http://localhost",
       screenshotsDir: "/tmp/screenshots",
+      scenarioMappings: mappings,
     });
     expect(prompt).toContain("Feature: Login");
   });
@@ -27,29 +57,33 @@ describe("buildPrompt", () => {
       scenarioFilter: null,
       configContent: "URL: http://localhost",
       screenshotsDir: "/tmp/screenshots",
+      scenarioMappings: mappings,
     });
     expect(prompt).toContain("URL: http://localhost");
   });
 
-  test("sets scenarios to ALL when no filter", () => {
+  test("includes scenario ID mapping when no filter", () => {
     const prompt = buildPrompt({
       features: [feature],
       scenarioFilter: null,
       configContent: "",
       screenshotsDir: "/tmp",
+      scenarioMappings: mappings,
     });
-    expect(prompt).toContain("`ALL`");
+    expect(prompt).toContain("ALL");
+    expect(prompt).toContain("s1: Valid login");
   });
 
-  test("lists filtered scenario names", () => {
+  test("includes scenario ID mapping with filter", () => {
     const prompt = buildPrompt({
       features: [feature],
       scenarioFilter: "login",
       configContent: "",
       screenshotsDir: "/tmp",
+      scenarioMappings: mappings,
     });
-    expect(prompt).toContain("Valid login");
-    expect(prompt).not.toContain("`ALL`");
+    expect(prompt).toContain("s1: Valid login");
+    expect(prompt).not.toContain("ALL");
   });
 
   test("replaces all occurrences of screenshots dir", () => {
@@ -58,6 +92,7 @@ describe("buildPrompt", () => {
       scenarioFilter: null,
       configContent: "",
       screenshotsDir: "/tmp/shots",
+      scenarioMappings: mappings,
     });
     expect(prompt).not.toContain("{SCREENSHOTS_DIR}");
     expect(prompt).toContain("/tmp/shots");
@@ -69,6 +104,7 @@ describe("buildPrompt", () => {
       scenarioFilter: null,
       configContent: "",
       screenshotsDir: "/tmp",
+      scenarioMappings: mappings,
     });
     expect(prompt).toContain("mcp__exspec__report_scenario_result");
   });
@@ -84,6 +120,7 @@ describe("buildPrompt", () => {
       scenarioFilter: null,
       configContent: "",
       screenshotsDir: "/tmp",
+      scenarioMappings: mappings,
     });
     expect(prompt).toContain("Feature: Login");
     expect(prompt).toContain("Feature: Register");
