@@ -9,7 +9,7 @@ import { runSetupCommands } from "./setup.js";
 import { discoverFeatures } from "./discovery.js";
 import { parseFeature, filterScenarios, groupByDomain } from "./gherkin.js";
 import { buildPrompt } from "./prompt.js";
-import { runDomain } from "./runner.js";
+import { runDomain, type RunCallbacks } from "./runner.js";
 import {
   generateRunId,
   initResultsFile,
@@ -154,17 +154,39 @@ if (config.setup && config.setup.length > 0) {
 
 // Display test plan
 console.log(
-  `Suite: ${totalScenarios} scenario(s) in ${domains.size} domain(s)\n`,
+  `Suite: ${totalScenarios} scenario(s) in ${domains.size} domain(s)`,
 );
-for (const [domain, domainFeatures] of domains) {
-  const count = domainFeatures.reduce((sum, f) => sum + f.scenarios.length, 0);
-  console.log(`  ${domain} (${count} scenarios)`);
-}
 
 // Execute tests domain by domain
 const totals: RunTotals = { passed: 0, failed: 0, skipped: 0, notExecuted: 0 };
 
+function printScenarioResult(s: {
+  name: string;
+  status: string;
+  details?: string;
+}) {
+  if (s.status === "pass") {
+    totals.passed++;
+    console.log(`    ${green("✓")} ${s.name}`);
+  } else if (s.status === "fail") {
+    totals.failed++;
+    console.log(`    ${red("✗")} ${s.name}`);
+    const { step, error } = extractFailInfo(s.details);
+    if (step) console.log(`      ${dim(`> ${step}`)}`);
+    if (error) console.log(`      ${red(`${bold("Error:")} ${error}`)}`);
+  } else if (s.status === "skip") {
+    totals.skipped++;
+    console.log(`    ${dim(`○ ${s.name}`)}`);
+  } else {
+    totals.notExecuted++;
+    console.log(`    ${dim(`- ${s.name} (not executed)`)}`);
+  }
+}
+
 for (const [domain, domainFeatures] of domains) {
+  const count = domainFeatures.reduce((sum, f) => sum + f.scenarios.length, 0);
+  console.log(`\n  ${bold(domain)} (${count} scenarios)`);
+
   const prompt = buildPrompt({
     features: domainFeatures,
     scenarioFilter: filter,
@@ -175,12 +197,29 @@ for (const [domain, domainFeatures] of domains) {
   const expectedScenarioNames = domainFeatures.flatMap((f) =>
     f.scenarios.map((s) => s.name),
   );
+
+  // Track scenarios displayed in real-time to avoid duplication
+  const displayedScenarios = new Set<string>();
+
+  const callbacks: RunCallbacks = {
+    onScenarioResult: (s) => {
+      displayedScenarios.add(s.name);
+      printScenarioResult(s);
+    },
+    onActivity: (message) => {
+      if (verbose) {
+        console.log(`      ${dim(message)}`);
+      }
+    },
+  };
+
   const result = await runDomain(
     prompt,
     domain,
     projectRoot,
     expectedScenarioNames,
     { headed },
+    callbacks,
   );
   appendDomainResults(resultsPath, result);
 
@@ -188,32 +227,10 @@ for (const [domain, domainFeatures] of domains) {
     totals.cost = (totals.cost ?? 0) + result.cost;
   }
 
-  if (result.isError) {
-    totals.notExecuted += result.scenarios.length;
-    for (const s of result.scenarios) {
-      console.log(`    ${red("✗")} ${s.name}`);
-      console.log(
-        `      ${dim("Error: Agent crashed or returned no results")}`,
-      );
-    }
-  } else {
-    for (const s of result.scenarios) {
-      if (s.status === "pass") {
-        totals.passed++;
-        console.log(`    ${green("✓")} ${s.name}`);
-      } else if (s.status === "fail") {
-        totals.failed++;
-        console.log(`    ${red("✗")} ${s.name}`);
-        const { step, error } = extractFailInfo(s.details);
-        if (step) console.log(`      ${dim(`> ${step}`)}`);
-        if (error) console.log(`      ${red(`${bold("Error:")} ${error}`)}`);
-      } else if (s.status === "skip") {
-        totals.skipped++;
-        console.log(`    ${dim(`○ ${s.name}`)}`);
-      } else {
-        totals.notExecuted++;
-        console.log(`    ${dim(`- ${s.name} (not executed)`)}`);
-      }
+  // Show scenarios not already displayed in real-time (not_executed from reconciliation, errors)
+  for (const s of result.scenarios) {
+    if (!displayedScenarios.has(s.name)) {
+      printScenarioResult(s);
     }
   }
 

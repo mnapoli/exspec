@@ -100,6 +100,19 @@ export function appendDomainResults(
     }
   }
 
+  // Append activity log if present
+  if (result.activityLog && result.activityLog.length > 0) {
+    lines.push(
+      "<details>",
+      `<summary>Agent activity (${result.activityLog.length} tool calls)</summary>`,
+      "",
+    );
+    for (let i = 0; i < result.activityLog.length; i++) {
+      lines.push(`${i + 1}. ${result.activityLog[i]}`);
+    }
+    lines.push("", "</details>", "");
+  }
+
   appendFileSync(resultsPath, lines.join("\n"));
 }
 

@@ -23,6 +23,7 @@ export interface DomainResult {
   isError: boolean;
   cost?: number;
   duration?: number;
+  activityLog?: string[];
 }
 
 export interface RunTotals {

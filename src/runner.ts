@@ -45,22 +45,29 @@ export interface RunOptions {
   headed?: boolean;
 }
 
+export interface RunCallbacks {
+  onScenarioResult?: (result: ScenarioResult) => void;
+  onActivity?: (message: string) => void;
+}
+
 export async function runDomain(
   prompt: string,
   domain: string,
   projectRoot: string,
   expectedScenarioNames: string[],
   options: RunOptions = {},
+  callbacks: RunCallbacks = {},
 ): Promise<DomainResult> {
   const id = randomBytes(6).toString("hex");
   const jsonlPath = join(tmpdir(), `exspec-results-${id}.jsonl`);
   const mcpConfigPath = writeMcpConfig(options.headed ?? false, jsonlPath);
 
   try {
-    const { result, cost, duration } = await invokeClaude(
+    const { result, cost, duration, activityLog } = await invokeClaude(
       prompt,
       projectRoot,
       mcpConfigPath,
+      callbacks,
     );
     const reported = readJsonlResults(jsonlPath);
     const scenarios = reconcileScenarios(
@@ -76,6 +83,7 @@ export async function runDomain(
       isError: false,
       cost,
       duration,
+      activityLog,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -125,12 +133,31 @@ interface ClaudeOutput {
   result: string;
   cost?: number;
   duration?: number;
+  activityLog: string[];
+}
+
+function formatToolCall(name: string, input: Record<string, unknown>): string {
+  // Strip MCP prefixes for readability
+  const short = name
+    .replace("mcp__playwright__", "")
+    .replace("mcp__exspec__", "");
+
+  // Pick the most useful arg to display
+  const url = input.url as string | undefined;
+  const ref = input.ref as string | undefined;
+  const element = input.element as string | undefined;
+  const value = input.value as string | undefined;
+  const path = input.path as string | undefined;
+
+  const hint = url || ref || element || path || value;
+  return hint ? `${short} → ${truncate(String(hint), 80)}` : short;
 }
 
 function invokeClaude(
   prompt: string,
   cwd: string,
   mcpConfigPath: string,
+  callbacks: RunCallbacks = {},
 ): Promise<ClaudeOutput> {
   return new Promise((resolve, reject) => {
     const child = spawn(
@@ -139,7 +166,8 @@ function invokeClaude(
         "-p",
         prompt,
         "--allowedTools",
-        "mcp__playwright__*,mcp__exspec__*",
+        "mcp__playwright__*",
+        "mcp__exspec__*",
         "--output-format",
         "stream-json",
         "--verbose",
@@ -155,6 +183,7 @@ function invokeClaude(
     let resultText = "";
     let cost: number | undefined;
     let duration: number | undefined;
+    const activityLog: string[] = [];
 
     child.stdout.on("data", (data: Buffer) => {
       buffer += data.toString();
@@ -176,10 +205,37 @@ function invokeClaude(
 
     function handleStreamEvent(event: Record<string, unknown>) {
       switch (event.type) {
-        case "assistant":
-        case "tool_use":
-        case "tool_result":
+        case "assistant": {
+          // tool_use blocks are nested inside assistant messages
+          const message = event.message as Record<string, unknown> | undefined;
+          const content = message?.content as
+            | Array<Record<string, unknown>>
+            | undefined;
+          if (!content) break;
+
+          for (const block of content) {
+            if (block.type === "tool_use") {
+              const toolName = block.name as string;
+              const input = (block.input as Record<string, unknown>) ?? {};
+              const entry = formatToolCall(toolName, input);
+              activityLog.push(entry);
+              callbacks.onActivity?.(entry);
+
+              // Emit real-time scenario result
+              if (
+                toolName === "mcp__exspec__report_scenario_result" &&
+                callbacks.onScenarioResult
+              ) {
+                callbacks.onScenarioResult({
+                  name: input.name as string,
+                  status: input.status as "pass" | "fail" | "skip",
+                  details: input.details as string | undefined,
+                });
+              }
+            }
+          }
           break;
+        }
         case "result": {
           resultText = (event.result as string) ?? "";
           cost = event.cost_usd as number | undefined;
@@ -212,7 +268,7 @@ function invokeClaude(
         const detail = resultText || truncate(stderr) || `exit code ${code}`;
         reject(new Error(detail));
       } else {
-        resolve({ result: resultText, cost, duration });
+        resolve({ result: resultText, cost, duration, activityLog });
       }
     });
 
