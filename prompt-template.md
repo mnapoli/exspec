@@ -56,7 +56,7 @@ For each scenario:
 1. **Setup**: Execute all Given steps.
 2. **Actions**: Execute all When steps.
 3. **Assertions**: Verify all Then/And steps.
-4. **Record result**: PASS, FAIL, or SKIP.
+4. **Report result**: Call the `mcp__exspec__report_scenario_result` tool.
 
 Between scenarios, start fresh if needed (create new test data).
 
@@ -81,26 +81,22 @@ After each significant action, check the browser for error indicators:
 - Error toasts or notification banners
 - Form validation messages
 
-## Output format
+## Reporting results
 
-Return your report using this EXACT format:
+After executing each scenario, report the result immediately by calling the `mcp__exspec__report_scenario_result` tool with:
 
-```
-## Feature: {feature_name}
+- **name**: the exact scenario name as written in the Feature file
+- **status**: `pass`, `fail`, or `skip`
+- **details**:
+  - PASS — brief confirmation of what was verified, including actual values seen
+  - FAIL — include:
+    **Failed step**: The step that failed
+    **Error**: What went wrong
+    **Expected**: Expected values
+    **Observed**: Actual values seen in the UI
+  - SKIP — reason the scenario was skipped
 
-### PASS: Scenario name
-Brief confirmation of what was verified, including actual values seen.
-
-### FAIL: Scenario name
-**Failed step**: The step that failed
-**Error**: What went wrong
-**Expected**: Expected values
-**Observed**: Actual values seen in the UI
-**Screenshot**: [description]
-
-### SKIP: Scenario name
-**Reason**: Why the scenario was skipped
-```
+Call this tool once per scenario, right after executing it. Do not batch results at the end.
 
 ## Rules
 

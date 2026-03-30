@@ -1,7 +1,9 @@
 import { spawn } from "child_process";
-import { writeFileSync, existsSync, readFileSync } from "fs";
+import { writeFileSync, existsSync, readFileSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { tmpdir } from "os";
+import { randomBytes } from "crypto";
 import { createRequire } from "module";
 import type { DomainResult, ScenarioResult } from "./types.js";
 
@@ -11,11 +13,14 @@ const playwrightBin = join(
   "cli.js",
 );
 
+const __filename = fileURLToPath(import.meta.url);
+const reporterBin = join(dirname(__filename), "mcp-reporter.js");
+
 function truncate(text: string, max = 500): string {
   return text.length > max ? text.slice(0, max) + "..." : text;
 }
 
-function getMcpConfigPath(headed: boolean): string {
+function writeMcpConfig(headed: boolean, resultsJsonlPath: string): string {
   const config = {
     mcpServers: {
       playwright: {
@@ -23,14 +28,16 @@ function getMcpConfigPath(headed: boolean): string {
         command: playwrightBin,
         args: headed ? [] : ["--headless"],
       },
+      exspec: {
+        type: "stdio",
+        command: "node",
+        args: [reporterBin, resultsJsonlPath],
+      },
     },
   };
-  const suffix = headed ? "-headed" : "";
-  const configPath = join(tmpdir(), `exspec-mcp${suffix}.json`);
-  const json = JSON.stringify(config);
-  if (!existsSync(configPath) || readFileSync(configPath, "utf-8") !== json) {
-    writeFileSync(configPath, json);
-  }
+  const id = randomBytes(6).toString("hex");
+  const configPath = join(tmpdir(), `exspec-mcp-${id}.json`);
+  writeFileSync(configPath, JSON.stringify(config));
   return configPath;
 }
 
@@ -45,14 +52,17 @@ export async function runDomain(
   expectedScenarioNames: string[],
   options: RunOptions = {},
 ): Promise<DomainResult> {
-  const mcpConfigPath = getMcpConfigPath(options.headed ?? false);
+  const id = randomBytes(6).toString("hex");
+  const jsonlPath = join(tmpdir(), `exspec-results-${id}.jsonl`);
+  const mcpConfigPath = writeMcpConfig(options.headed ?? false, jsonlPath);
+
   try {
     const { result, cost, duration } = await invokeClaude(
       prompt,
       projectRoot,
       mcpConfigPath,
     );
-    const reported = parseScenarioResults(result);
+    const reported = readJsonlResults(jsonlPath);
     const scenarios = reconcileScenarios(
       reported,
       expectedScenarioNames,
@@ -69,6 +79,23 @@ export async function runDomain(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // Even on error, check if partial results were recorded
+    const reported = readJsonlResults(jsonlPath);
+    if (reported.length > 0) {
+      const scenarios = reconcileScenarios(
+        reported,
+        expectedScenarioNames,
+        message,
+      );
+      return {
+        domain,
+        scenarios,
+        rawOutput: message,
+        isError: true,
+        cost: undefined,
+        duration: undefined,
+      };
+    }
     return {
       domain,
       scenarios: expectedScenarioNames.map((name) => ({
@@ -79,6 +106,18 @@ export async function runDomain(
       rawOutput: truncate(message),
       isError: true,
     };
+  } finally {
+    // Clean up temp files
+    try {
+      unlinkSync(mcpConfigPath);
+    } catch {
+      // File may not exist
+    }
+    try {
+      unlinkSync(jsonlPath);
+    } catch {
+      // File may not exist
+    }
   }
 }
 
@@ -100,7 +139,7 @@ function invokeClaude(
         "-p",
         prompt,
         "--allowedTools",
-        "mcp__playwright__*",
+        "mcp__playwright__*,mcp__exspec__*",
         "--output-format",
         "stream-json",
         "--verbose",
@@ -137,14 +176,7 @@ function invokeClaude(
 
     function handleStreamEvent(event: Record<string, unknown>) {
       switch (event.type) {
-        case "assistant": {
-          const message = event.message as Record<string, unknown> | undefined;
-          const content = message?.content as
-            | Array<Record<string, unknown>>
-            | undefined;
-          // silent — progress output removed
-          break;
-        }
+        case "assistant":
         case "tool_use":
         case "tool_result":
           break;
@@ -190,19 +222,23 @@ function invokeClaude(
   });
 }
 
-export function parseScenarioResults(output: string): ScenarioResult[] {
-  const results: ScenarioResult[] = [];
-  const lines = output.split("\n");
+export function readJsonlResults(path: string): ScenarioResult[] {
+  if (!existsSync(path)) return [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const match = lines[i].match(/^### (PASS|FAIL|SKIP):\s*(.+)/);
-    if (match) {
-      const status = match[1].toLowerCase() as "pass" | "fail" | "skip";
-      const details = collectDetails(lines, i + 1);
-      results.push({ name: match[2].trim(), status, details });
+  const content = readFileSync(path, "utf-8").trim();
+  if (!content) return [];
+
+  const results: ScenarioResult[] = [];
+  for (const line of content.split("\n")) {
+    try {
+      const { name, status, details } = JSON.parse(line);
+      if (name && status) {
+        results.push({ name, status, details });
+      }
+    } catch {
+      // Skip malformed lines
     }
   }
-
   return results;
 }
 
@@ -227,7 +263,7 @@ export function reconcileScenarios(
   const missingNames = expectedNames.filter((name) => !reportedNames.has(name));
   if (missingNames.length === 0) return known;
 
-  const reason = inferNotExecutedReason(known, missingNames, rawOutput);
+  const reason = inferNotExecutedReason(known, rawOutput);
   const missing = missingNames.map((name) => ({
     name,
     status: "not_executed" as const,
@@ -238,29 +274,14 @@ export function reconcileScenarios(
 
 function inferNotExecutedReason(
   reported: ScenarioResult[],
-  missingNames: string[],
   rawOutput: string,
 ): string {
   if (!rawOutput.trim()) {
     return "Agent returned empty output";
   }
   if (reported.length === 0) {
-    // Agent produced output but no parseable scenario results
     const excerpt = truncate(rawOutput.trim());
     return `Agent did not report any scenario results. Output excerpt:\n${excerpt}`;
   }
-  // Some scenarios were reported but not these ones
   return `Agent completed ${reported.length} scenario(s) but did not report results for this one`;
-}
-
-function collectDetails(lines: string[], startIndex: number): string {
-  const detailLines: string[] = [];
-
-  for (let i = startIndex; i < lines.length; i++) {
-    if (lines[i].match(/^### (PASS|FAIL|SKIP):/)) break;
-    if (lines[i].match(/^## /)) break;
-    detailLines.push(lines[i]);
-  }
-
-  return detailLines.join("\n").trim();
 }

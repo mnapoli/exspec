@@ -1,95 +1,71 @@
 import { describe, test, expect, vi } from "vitest";
-import { parseScenarioResults, reconcileScenarios } from "./runner.js";
+import { readJsonlResults, reconcileScenarios } from "./runner.js";
+import { writeFileSync, unlinkSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+import { randomBytes } from "crypto";
 
-describe("parseScenarioResults", () => {
-  test("parses PASS scenarios", () => {
-    const output = `## Feature: Login
+function tmpFile(content: string): string {
+  const path = join(
+    tmpdir(),
+    `exspec-test-${randomBytes(4).toString("hex")}.jsonl`,
+  );
+  writeFileSync(path, content);
+  return path;
+}
 
-### PASS: User can login
-Login succeeded with correct credentials.`;
-
-    const results = parseScenarioResults(output);
+describe("readJsonlResults", () => {
+  test("parses valid JSONL", () => {
+    const path = tmpFile(
+      '{"name":"Login","status":"pass","details":"OK"}\n{"name":"Logout","status":"fail","details":"Error"}\n',
+    );
+    const results = readJsonlResults(path);
     expect(results).toEqual([
-      {
-        name: "User can login",
-        status: "pass",
-        details: "Login succeeded with correct credentials.",
-      },
+      { name: "Login", status: "pass", details: "OK" },
+      { name: "Logout", status: "fail", details: "Error" },
     ]);
+    unlinkSync(path);
   });
 
-  test("parses FAIL scenarios with details", () => {
-    const output = `### FAIL: User sees dashboard
-**Failed step**: Then I should see the dashboard
-**Error**: Element not found
-**Expected**: Dashboard page
-**Observed**: Login page`;
-
-    const results = parseScenarioResults(output);
-    expect(results).toHaveLength(1);
-    expect(results[0].status).toBe("fail");
-    expect(results[0].name).toBe("User sees dashboard");
-    expect(results[0].details).toContain("Element not found");
+  test("returns empty array for missing file", () => {
+    expect(readJsonlResults("/tmp/nonexistent-file.jsonl")).toEqual([]);
   });
 
-  test("parses SKIP scenarios", () => {
-    const output = `### SKIP: Admin panel
-**Reason**: Setup step failed`;
+  test("returns empty array for empty file", () => {
+    const path = tmpFile("");
+    expect(readJsonlResults(path)).toEqual([]);
+    unlinkSync(path);
+  });
 
-    const results = parseScenarioResults(output);
+  test("skips malformed lines", () => {
+    const path = tmpFile(
+      '{"name":"Login","status":"pass"}\nnot json\n{"name":"Logout","status":"fail"}\n',
+    );
+    const results = readJsonlResults(path);
+    expect(results).toHaveLength(2);
+    expect(results[0].name).toBe("Login");
+    expect(results[1].name).toBe("Logout");
+    unlinkSync(path);
+  });
+
+  test("skips lines missing required fields", () => {
+    const path = tmpFile(
+      '{"name":"Login"}\n{"status":"pass"}\n{"name":"Valid","status":"pass"}\n',
+    );
+    const results = readJsonlResults(path);
     expect(results).toEqual([
-      {
-        name: "Admin panel",
-        status: "skip",
-        details: "**Reason**: Setup step failed",
-      },
+      { name: "Valid", status: "pass", details: undefined },
     ]);
+    unlinkSync(path);
   });
 
-  test("parses mixed results", () => {
-    const output = `## Feature: Auth
-
-### PASS: Login
-OK
-
-### FAIL: Logout
-Button not found
-
-### SKIP: MFA
-Not configured`;
-
-    const results = parseScenarioResults(output);
-    expect(results).toHaveLength(3);
-    expect(results[0]).toMatchObject({ name: "Login", status: "pass" });
-    expect(results[1]).toMatchObject({ name: "Logout", status: "fail" });
-    expect(results[2]).toMatchObject({ name: "MFA", status: "skip" });
-  });
-
-  test("returns empty array for no matches", () => {
-    expect(parseScenarioResults("random text")).toEqual([]);
-  });
-
-  test("stops collecting details at next scenario header", () => {
-    const output = `### PASS: First
-Detail line 1
-Detail line 2
-
-### PASS: Second
-Other detail`;
-
-    const results = parseScenarioResults(output);
-    expect(results[0].details).toBe("Detail line 1\nDetail line 2");
-    expect(results[1].details).toBe("Other detail");
-  });
-
-  test("stops collecting details at feature header", () => {
-    const output = `### PASS: First
-Some detail
-
-## Feature: Other`;
-
-    const results = parseScenarioResults(output);
-    expect(results[0].details).toBe("Some detail");
+  test("handles optional details field", () => {
+    const path = tmpFile('{"name":"Login","status":"pass"}\n');
+    const results = readJsonlResults(path);
+    expect(results).toEqual([
+      { name: "Login", status: "pass", details: undefined },
+    ]);
+    unlinkSync(path);
   });
 });
 
@@ -148,7 +124,6 @@ describe("reconcileScenarios", () => {
     const longOutput = "x".repeat(600);
     const result = reconcileScenarios([], ["Login"], longOutput);
     expect(result[0].details).toContain("...");
-    // 500 chars + "..." = excerpt is truncated
     expect(result[0].details!.length).toBeLessThan(600);
   });
 });

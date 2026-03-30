@@ -42,7 +42,7 @@
   "author": "Matthieu Napoli",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "publishConfig": {
     "access": "public"
@@ -50,10 +50,12 @@
   "dependencies": {
     "@cucumber/gherkin": "^29.0.0",
     "@cucumber/messages": "^25.0.0",
+    "@modelcontextprotocol/sdk": "^1.28.0",
     "@playwright/mcp": "^0.0.68",
     "dotenv": "^16.4.0",
     "dotenv-expand": "^12.0.0",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

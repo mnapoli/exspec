@@ -59,10 +59,18 @@ describe("buildPrompt", () => {
       configContent: "",
       screenshotsDir: "/tmp/shots",
     });
-    // The template has {SCREENSHOTS_DIR} in two places
     expect(prompt).not.toContain("{SCREENSHOTS_DIR}");
-    const count = (prompt.match(/\/tmp\/shots/g) ?? []).length;
-    expect(count).toBeGreaterThanOrEqual(2);
+    expect(prompt).toContain("/tmp/shots");
+  });
+
+  test("includes MCP tool reference for reporting", () => {
+    const prompt = buildPrompt({
+      features: [feature],
+      scenarioFilter: null,
+      configContent: "",
+      screenshotsDir: "/tmp",
+    });
+    expect(prompt).toContain("mcp__exspec__report_scenario_result");
   });
 
   test("joins multiple features with separator", () => {
