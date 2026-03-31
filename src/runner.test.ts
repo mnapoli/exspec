@@ -37,6 +37,8 @@ describe("buildClaudeArgs", () => {
     expect(disallowed).toContain("Edit");
     expect(disallowed).toContain("Write");
     expect(disallowed).toContain("Agent");
+    expect(disallowed).toContain("AskUserQuestion");
+    expect(disallowed).toContain("Skill");
     expect(disallowed).not.toContain("TodoWrite");
     expect(disallowed).not.toContain("TodoRead");
   });

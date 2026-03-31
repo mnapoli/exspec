@@ -164,7 +164,7 @@ export function buildClaudeArgs(
     "--allowedTools",
     "Bash(playwright-cli:*),mcp__exspec__*",
     "--disallowedTools",
-    "Edit,Write,Read,Glob,Grep,NotebookEdit,Agent,WebFetch,WebSearch,ToolSearch",
+    "Edit,Write,Read,Glob,Grep,NotebookEdit,Agent,WebFetch,WebSearch,ToolSearch,AskUserQuestion,Skill",
     "--mcp-config",
     mcpConfigPath,
     "--output-format",
