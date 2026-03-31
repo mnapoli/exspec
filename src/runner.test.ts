@@ -51,6 +51,10 @@ describe("buildClaudeArgs", () => {
   test("uses sonnet model", () => {
     expect(args[args.indexOf("--model") + 1]).toBe("sonnet");
   });
+
+  test("enables thinking tokens", () => {
+    expect(args[args.indexOf("--max-thinking-tokens") + 1]).toBe("10000");
+  });
 });
 
 describe("readJsonlResults", () => {

@@ -171,6 +171,8 @@ export function buildClaudeArgs(
     "--verbose",
     "--model",
     "sonnet",
+    "--max-thinking-tokens",
+    "10000",
   ];
 }
 
@@ -237,11 +239,11 @@ function invokeClaude(
           if (!content) break;
 
           for (const block of content) {
-            if (block.type === "text") {
-              const text = (block.text as string) ?? "";
+            if (block.type === "thinking") {
+              const text = (block.thinking as string) ?? "";
               const firstLine = text.split("\n").find((l) => l.trim())?.trim();
               if (firstLine) {
-                const entry = `[${elapsed()}] 💭 ${truncate(firstLine, 120)}`;
+                const entry = `[${elapsed()}] ${truncate(firstLine, 120)}`;
                 activityLog.push(entry);
                 callbacks.onActivity?.(entry);
               }
