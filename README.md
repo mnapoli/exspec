@@ -177,6 +177,6 @@ The agent is sandboxed to browser-only interaction. If a scenario can't be verif
 
 Results are written to `features/exspec/{YYYY-MM-DD-HHmm}.md` with failure screenshots and a real-time activity log (tool calls, timestamps, token usage).
 
-When the agent encounters ambiguous test steps or has to make assumptions, it may include **recommendations** for improving the test — shown in the CLI summary and the results file.
+When the agent encounters ambiguous test steps or has to make assumptions, it may include **recommendations** in its summary.
 
 The CLI exits with code `1` on failures (CI-friendly).
