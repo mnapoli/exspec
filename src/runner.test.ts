@@ -1,5 +1,9 @@
 import { describe, test, expect, vi } from "vitest";
-import { readJsonlResults, reconcileScenarios } from "./runner.js";
+import {
+  readJsonlResults,
+  reconcileScenarios,
+  buildClaudeArgs,
+} from "./runner.js";
 import { writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -13,6 +17,41 @@ function tmpFile(content: string): string {
   writeFileSync(path, content);
   return path;
 }
+
+describe("buildClaudeArgs", () => {
+  const args = buildClaudeArgs("test prompt", "/tmp/mcp.json");
+
+  test("uses prompt mode", () => {
+    expect(args).toContain("-p");
+    expect(args[args.indexOf("-p") + 1]).toBe("test prompt");
+  });
+
+  test("allows only playwright-cli bash and exspec MCP tools", () => {
+    const allowed = args[args.indexOf("--allowedTools") + 1];
+    expect(allowed).toBe("Bash(playwright-cli:*),mcp__exspec__*");
+  });
+
+  test("disallows dangerous tools but allows TodoWrite and TodoRead", () => {
+    const disallowed = args[args.indexOf("--disallowedTools") + 1];
+    expect(disallowed).toContain("Edit");
+    expect(disallowed).toContain("Write");
+    expect(disallowed).toContain("Agent");
+    expect(disallowed).not.toContain("TodoWrite");
+    expect(disallowed).not.toContain("TodoRead");
+  });
+
+  test("passes MCP config path", () => {
+    expect(args[args.indexOf("--mcp-config") + 1]).toBe("/tmp/mcp.json");
+  });
+
+  test("uses stream-json output format", () => {
+    expect(args[args.indexOf("--output-format") + 1]).toBe("stream-json");
+  });
+
+  test("uses sonnet model", () => {
+    expect(args[args.indexOf("--model") + 1]).toBe("sonnet");
+  });
+});
 
 describe("readJsonlResults", () => {
   test("parses valid JSONL with id-based results", () => {

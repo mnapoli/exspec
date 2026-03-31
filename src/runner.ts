@@ -157,6 +157,27 @@ function formatToolCall(name: string, input: Record<string, unknown>): string {
   return hint ? `${short} → ${hint}` : short;
 }
 
+export function buildClaudeArgs(
+  prompt: string,
+  mcpConfigPath: string,
+): string[] {
+  return [
+    "-p",
+    prompt,
+    "--allowedTools",
+    "Bash(playwright-cli:*),mcp__exspec__*",
+    "--disallowedTools",
+    "Edit,Write,Read,Glob,Grep,NotebookEdit,Agent,WebFetch,WebSearch,ToolSearch",
+    "--mcp-config",
+    mcpConfigPath,
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--model",
+    "sonnet",
+  ];
+}
+
 function invokeClaude(
   prompt: string,
   cwd: string,
@@ -166,21 +187,7 @@ function invokeClaude(
   return new Promise((resolve, reject) => {
     const child = spawn(
       "claude",
-      [
-        "-p",
-        prompt,
-        "--allowedTools",
-        "Bash(playwright-cli:*),mcp__exspec__*",
-        "--disallowedTools",
-        "Edit,Write,Read,Glob,Grep,NotebookEdit,Agent,WebFetch,WebSearch,ToolSearch,TodoWrite,TodoRead",
-        "--mcp-config",
-        mcpConfigPath,
-        "--output-format",
-        "stream-json",
-        "--verbose",
-        "--model",
-        "sonnet",
-      ],
+      buildClaudeArgs(prompt, mcpConfigPath),
       {
         cwd,
         stdio: ["ignore", "pipe", "pipe"],
