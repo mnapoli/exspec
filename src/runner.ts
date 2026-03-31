@@ -160,6 +160,7 @@ export function buildClaudeArgs(
   return [
     "-p",
     prompt,
+    "--strict-mcp-config",
     "--allowedTools",
     "Bash(playwright-cli:*),mcp__exspec__*",
     "--disallowedTools",
@@ -202,12 +203,25 @@ function invokeClaude(
     let duration: number | undefined;
     const activityLog: string[] = [];
     const startTime = Date.now();
+    let totalTokens = 0;
 
     function elapsed(): string {
       const secs = Math.round((Date.now() - startTime) / 1000);
       const m = Math.floor(secs / 60);
       const s = secs % 60;
       return m > 0 ? `${m}m${String(s).padStart(2, "0")}s` : `${s}s`;
+    }
+
+    function formatTokens(n: number): string {
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+      return String(n);
+    }
+
+    function logEntry(text: string): void {
+      const entry = `[${elapsed()}][${formatTokens(totalTokens)}] ${text}`;
+      activityLog.push(entry);
+      callbacks.onActivity?.(entry);
     }
 
     child.stdout.on("data", (data: Buffer) => {
@@ -230,9 +244,35 @@ function invokeClaude(
 
     function handleStreamEvent(event: Record<string, unknown>) {
       switch (event.type) {
+        case "system": {
+          const subtype = event.subtype as string | undefined;
+          if (subtype === "init") {
+            logEntry("session started");
+          } else if (subtype === "compact_boundary") {
+            const meta = event.compact_metadata as
+              | Record<string, unknown>
+              | undefined;
+            const pre = meta?.pre_tokens as number | undefined;
+            logEntry(
+              `compacted context${pre ? ` (was ${formatTokens(pre)})` : ""}`,
+            );
+          }
+          break;
+        }
         case "assistant": {
-          // tool_use blocks are nested inside assistant messages
+          // Track token usage
           const message = event.message as Record<string, unknown> | undefined;
+          const usage = message?.usage as
+            | Record<string, number>
+            | undefined;
+          if (usage) {
+            totalTokens =
+              (usage.input_tokens ?? 0) +
+              (usage.cache_creation_input_tokens ?? 0) +
+              (usage.cache_read_input_tokens ?? 0) +
+              (usage.output_tokens ?? 0);
+          }
+
           const content = message?.content as
             | Array<Record<string, unknown>>
             | undefined;
@@ -241,19 +281,18 @@ function invokeClaude(
           for (const block of content) {
             if (block.type === "thinking") {
               const text = (block.thinking as string) ?? "";
-              const firstLine = text.split("\n").find((l) => l.trim())?.trim();
-              if (firstLine) {
-                const entry = `[${elapsed()}] ${truncate(firstLine, 120)}`;
-                activityLog.push(entry);
-                callbacks.onActivity?.(entry);
+              const lines = text
+                .split("\n")
+                .map((l) => l.trim())
+                .filter(Boolean)
+                .slice(0, 5);
+              if (lines.length > 0) {
+                logEntry(lines.join("\n    "));
               }
             } else if (block.type === "tool_use") {
               const toolName = block.name as string;
               const input = (block.input as Record<string, unknown>) ?? {};
-              const entry = formatToolCall(toolName, input);
-              const timedEntry = `[${elapsed()}] ${entry}`;
-              activityLog.push(timedEntry);
-              callbacks.onActivity?.(timedEntry);
+              logEntry(formatToolCall(toolName, input));
 
               // Emit real-time scenario result (name holds the id here,
               // resolved to actual name by wrappedCallbacks)

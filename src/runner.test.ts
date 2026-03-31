@@ -21,9 +21,10 @@ function tmpFile(content: string): string {
 describe("buildClaudeArgs", () => {
   const args = buildClaudeArgs("test prompt", "/tmp/mcp.json");
 
-  test("uses prompt mode", () => {
+  test("uses prompt mode with strict MCP config", () => {
     expect(args).toContain("-p");
     expect(args[args.indexOf("-p") + 1]).toBe("test prompt");
+    expect(args).toContain("--strict-mcp-config");
   });
 
   test("allows only playwright-cli bash and exspec MCP tools", () => {
