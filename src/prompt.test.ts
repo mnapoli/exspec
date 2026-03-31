@@ -98,6 +98,45 @@ describe("buildPrompt", () => {
     expect(prompt).toContain("/tmp/shots");
   });
 
+  test("uses headless browser open by default", () => {
+    const prompt = buildPrompt({
+      features: [feature],
+      scenarioFilter: null,
+      configContent: "",
+      screenshotsDir: "/tmp",
+      scenarioMappings: mappings,
+    });
+    expect(prompt).toContain("playwright-cli open --headless");
+    expect(prompt).not.toContain("{BROWSER_OPEN}");
+  });
+
+  test("uses headed browser open when headed is true", () => {
+    const prompt = buildPrompt({
+      features: [feature],
+      scenarioFilter: null,
+      configContent: "",
+      screenshotsDir: "/tmp",
+      scenarioMappings: mappings,
+      headed: true,
+    });
+    // The process section should use `playwright-cli open` without --headless
+    expect(prompt).toContain("`playwright-cli open`");
+    expect(prompt).not.toContain("open --headless`");
+  });
+
+  test("includes playwright-cli command reference", () => {
+    const prompt = buildPrompt({
+      features: [feature],
+      scenarioFilter: null,
+      configContent: "",
+      screenshotsDir: "/tmp",
+      scenarioMappings: mappings,
+    });
+    expect(prompt).toContain("playwright-cli snapshot");
+    expect(prompt).toContain("playwright-cli click");
+    expect(prompt).toContain("playwright-cli fill");
+  });
+
   test("includes MCP tool reference for reporting", () => {
     const prompt = buildPrompt({
       features: [feature],

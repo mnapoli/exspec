@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import type { ParsedFeature } from "./types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const templatePath = resolve(__dirname, "..", "prompt-template.md");
+const templatePath = resolve(__dirname, "prompt-template.md");
 
 export interface ScenarioMapping {
   id: string;
@@ -26,6 +26,7 @@ export function buildPrompt(options: {
   configContent: string;
   screenshotsDir: string;
   scenarioMappings: ScenarioMapping[];
+  headed?: boolean;
 }): string {
   let template = readFileSync(templatePath, "utf-8");
 
@@ -41,11 +42,16 @@ export function buildPrompt(options: {
     ? scenarioList
     : `ALL\n\n${scenarioList}`;
 
+  const browserOpen = options.headed
+    ? "playwright-cli open"
+    : "playwright-cli open --headless";
+
   template = template
     .replaceAll("{FEATURE_CONTENT}", featureContent)
     .replaceAll("{SCENARIOS_TO_EXECUTE}", scenariosToExecute)
     .replaceAll("{CONFIG_CONTEXT}", options.configContent)
-    .replaceAll("{SCREENSHOTS_DIR}", options.screenshotsDir);
+    .replaceAll("{SCREENSHOTS_DIR}", options.screenshotsDir)
+    .replaceAll("{BROWSER_OPEN}", browserOpen);
 
   return template;
 }

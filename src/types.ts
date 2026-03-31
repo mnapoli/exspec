@@ -25,6 +25,7 @@ export interface DomainResult {
   cost?: number;
   duration?: number;
   activityLog?: string[];
+  prompt?: string;
 }
 
 export interface RunTotals {

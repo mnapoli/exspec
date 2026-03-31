@@ -113,6 +113,36 @@ export function appendDomainResults(
     lines.push("", "</details>", "");
   }
 
+  // Append prompt for debugging
+  if (result.prompt) {
+    lines.push(
+      "<details>",
+      "<summary>Prompt</summary>",
+      "",
+      "```",
+      result.prompt,
+      "```",
+      "",
+      "</details>",
+      "",
+    );
+  }
+
+  // Append full agent output for debugging
+  if (result.rawOutput) {
+    lines.push(
+      "<details>",
+      "<summary>Agent output</summary>",
+      "",
+      "```",
+      result.rawOutput,
+      "```",
+      "",
+      "</details>",
+      "",
+    );
+  }
+
   appendFileSync(resultsPath, lines.join("\n"));
 }
 

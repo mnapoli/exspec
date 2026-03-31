@@ -9,9 +9,14 @@ import type { DomainResult, ScenarioResult } from "./types.js";
 import type { ScenarioMapping } from "./prompt.js";
 
 const require = createRequire(import.meta.url);
-const playwrightBin = join(
-  dirname(require.resolve("@playwright/mcp/package.json")),
-  "cli.js",
+// Resolve node_modules/.bin containing the playwright-cli symlink.
+// @playwright/cli lives at node_modules/@playwright/cli/, so we go up two
+// levels to node_modules/ then into .bin/.
+const playwrightCliBinDir = join(
+  dirname(require.resolve("@playwright/cli/package.json")),
+  "..",
+  "..",
+  ".bin",
 );
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,14 +26,9 @@ function truncate(text: string, max = 500): string {
   return text.length > max ? text.slice(0, max) + "..." : text;
 }
 
-function writeMcpConfig(headed: boolean, resultsJsonlPath: string): string {
+function writeMcpConfig(resultsJsonlPath: string): string {
   const config = {
     mcpServers: {
-      playwright: {
-        type: "stdio",
-        command: playwrightBin,
-        args: headed ? [] : ["--headless"],
-      },
       exspec: {
         type: "stdio",
         command: "node",
@@ -42,10 +42,6 @@ function writeMcpConfig(headed: boolean, resultsJsonlPath: string): string {
   return configPath;
 }
 
-export interface RunOptions {
-  headed?: boolean;
-}
-
 export interface RunCallbacks {
   onScenarioResult?: (result: ScenarioResult) => void;
   onActivity?: (message: string) => void;
@@ -56,12 +52,11 @@ export async function runDomain(
   domain: string,
   projectRoot: string,
   scenarioMappings: ScenarioMapping[],
-  options: RunOptions = {},
   callbacks: RunCallbacks = {},
 ): Promise<DomainResult> {
   const id = randomBytes(6).toString("hex");
   const jsonlPath = join(tmpdir(), `exspec-results-${id}.jsonl`);
-  const mcpConfigPath = writeMcpConfig(options.headed ?? false, jsonlPath);
+  const mcpConfigPath = writeMcpConfig(jsonlPath);
 
   const idToName = new Map(scenarioMappings.map((m) => [m.id, m.name]));
 
@@ -94,6 +89,7 @@ export async function runDomain(
       cost,
       duration,
       activityLog,
+      prompt,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -108,6 +104,7 @@ export async function runDomain(
         isError: true,
         cost: undefined,
         duration: undefined,
+        prompt,
       };
     }
     return {
@@ -119,6 +116,7 @@ export async function runDomain(
       })),
       rawOutput: truncate(message),
       isError: true,
+      prompt,
     };
   } finally {
     // Clean up temp files
@@ -143,20 +141,20 @@ interface ClaudeOutput {
 }
 
 function formatToolCall(name: string, input: Record<string, unknown>): string {
-  // Strip MCP prefixes for readability
-  const short = name
-    .replace("mcp__playwright__", "")
-    .replace("mcp__exspec__", "");
+  if (name === "Bash") {
+    const cmd = (input.command as string) ?? "";
+    // Strip "playwright-cli " prefix for readability
+    return cmd.startsWith("playwright-cli ")
+      ? truncate(cmd.slice("playwright-cli ".length), 80)
+      : truncate(cmd, 80);
+  }
 
-  // Pick the most useful arg to display
-  const url = input.url as string | undefined;
-  const ref = input.ref as string | undefined;
-  const element = input.element as string | undefined;
-  const value = input.value as string | undefined;
-  const path = input.path as string | undefined;
-
-  const hint = url || ref || element || path || value;
-  return hint ? `${short} → ${truncate(String(hint), 80)}` : short;
+  // MCP exspec tools
+  const short = name.replace("mcp__exspec__", "");
+  const id = input.id as string | undefined;
+  const status = input.status as string | undefined;
+  const hint = id && status ? `${id} → ${status}` : id || status;
+  return hint ? `${short} → ${hint}` : short;
 }
 
 function invokeClaude(
@@ -171,19 +169,26 @@ function invokeClaude(
       [
         "-p",
         prompt,
-        // Comma-separated in a single arg — space-separated would require shell
-        // quoting (e.g. "Bash(git:*) Edit") which doesn't work with spawn args.
         "--allowedTools",
-        "mcp__playwright__*,mcp__exspec__*",
+        "Bash(playwright-cli:*),mcp__exspec__*",
+        "--disallowedTools",
+        "Edit,Write,Read,Glob,Grep,NotebookEdit,Agent,WebFetch,WebSearch,ToolSearch,TodoWrite,TodoRead",
+        "--mcp-config",
+        mcpConfigPath,
         "--output-format",
         "stream-json",
         "--verbose",
         "--model",
         "sonnet",
-        "--mcp-config",
-        mcpConfigPath,
       ],
-      { cwd, stdio: ["ignore", "pipe", "pipe"] },
+      {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          PATH: playwrightCliBinDir + ":" + (process.env.PATH ?? ""),
+        },
+      },
     );
 
     let buffer = "";

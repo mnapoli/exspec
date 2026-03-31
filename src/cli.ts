@@ -197,6 +197,7 @@ for (const [domain, domainFeatures] of domains) {
     configContent,
     screenshotsDir,
     scenarioMappings,
+    headed,
   });
 
   // Track scenarios displayed in real-time to avoid duplication
@@ -219,7 +220,6 @@ for (const [domain, domainFeatures] of domains) {
     domain,
     projectRoot,
     scenarioMappings,
-    { headed },
     callbacks,
   );
   appendDomainResults(resultsPath, result);
