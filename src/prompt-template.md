@@ -99,7 +99,7 @@ Call this tool once per scenario, right after executing it. Do not batch results
 ## playwright-cli command reference
 
 ```
-playwright-cli open [url]              Open the browser (add --headless for headless mode)
+playwright-cli open [url]              Open the browser (headless by default, add --headed for visible mode)
 playwright-cli close                   Close the browser
 playwright-cli goto <url>              Navigate to a URL
 playwright-cli snapshot                Capture page snapshot (YAML with element refs)

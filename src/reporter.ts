@@ -49,83 +49,59 @@ export function initResultsFile(
   return { resultsPath, screenshotsDir };
 }
 
+export function appendDomainHeader(
+  resultsPath: string,
+  domain: string,
+): void {
+  appendFileSync(resultsPath, `\n## ${domain}\n\n`);
+}
+
+export function appendScenarioResult(
+  resultsPath: string,
+  scenario: { name: string; status: string; details?: string },
+): void {
+  const lines: string[] = [];
+  if (scenario.status === "pass") {
+    lines.push(`  ✓ ${scenario.name}`);
+    if (scenario.details) {
+      lines.push(`    ${scenario.details.split("\n")[0]}`);
+    }
+  } else if (scenario.status === "fail") {
+    lines.push(`  ✗ ${scenario.name}`);
+    if (scenario.details) {
+      lines.push(`    → ${scenario.details.split("\n").join("\n    ")}`);
+    }
+  } else if (scenario.status === "not_executed") {
+    lines.push(`  ✗ ${scenario.name} (not executed)`);
+    if (scenario.details) {
+      lines.push(`    → ${scenario.details.split("\n").join("\n    ")}`);
+    }
+  } else {
+    lines.push(`  ○ ${scenario.name}`);
+    if (scenario.details) {
+      lines.push(`    → ${scenario.details.split("\n")[0]}`);
+    }
+  }
+  lines.push("");
+  appendFileSync(resultsPath, lines.join("\n"));
+}
+
+export function appendActivity(resultsPath: string, message: string): void {
+  appendFileSync(resultsPath, `    ${message}\n`);
+}
+
 export function appendDomainResults(
   resultsPath: string,
   result: DomainResult,
 ): void {
   const lines: string[] = [""];
 
-  if (result.isError) {
-    lines.push(`## ${result.domain} — ERROR`, "");
-    lines.push(`  Agent crashed or returned no results.`);
+  if (result.isError && !result.scenarios.length) {
+    lines.push(`Agent crashed or returned no results.`);
     if (result.rawOutput) {
-      lines.push(`  Raw output: ${result.rawOutput.slice(0, 500)}`);
+      lines.push(`Raw output: ${result.rawOutput.slice(0, 500)}`);
     }
-  } else {
-    const passed = result.scenarios.filter((s) => s.status === "pass").length;
-    const failed = result.scenarios.filter((s) => s.status === "fail").length;
-    const skipped = result.scenarios.filter((s) => s.status === "skip").length;
-    const notExecuted = result.scenarios.filter(
-      (s) => s.status === "not_executed",
-    ).length;
-
-    lines.push(
-      `## ${result.domain} — ${passed} passed, ${failed} failed, ${skipped} skipped, ${notExecuted} not executed`,
-      "",
-    );
-
-    for (const scenario of result.scenarios) {
-      if (scenario.status === "pass") {
-        lines.push(`  ✓ ${scenario.name}`);
-        if (scenario.details) {
-          lines.push(`    ${scenario.details.split("\n")[0]}`);
-        }
-      } else if (scenario.status === "fail") {
-        lines.push(`  ✗ ${scenario.name}`);
-        if (scenario.details) {
-          lines.push(`    → ${scenario.details.split("\n").join("\n    ")}`);
-        }
-      } else if (scenario.status === "not_executed") {
-        lines.push(`  ✗ ${scenario.name} (not executed)`);
-        if (scenario.details) {
-          lines.push(`    → ${scenario.details.split("\n").join("\n    ")}`);
-        }
-      } else {
-        lines.push(`  ○ ${scenario.name}`);
-        if (scenario.details) {
-          lines.push(`    → ${scenario.details.split("\n")[0]}`);
-        }
-      }
-      lines.push("");
-    }
-  }
-
-  // Append activity log if present
-  if (result.activityLog && result.activityLog.length > 0) {
-    lines.push(
-      "<details>",
-      `<summary>Agent activity (${result.activityLog.length} tool calls)</summary>`,
-      "",
-    );
-    for (let i = 0; i < result.activityLog.length; i++) {
-      lines.push(`${i + 1}. ${result.activityLog[i]}`);
-    }
-    lines.push("", "</details>", "");
-  }
-
-  // Append prompt for debugging
-  if (result.prompt) {
-    lines.push(
-      "<details>",
-      "<summary>Prompt</summary>",
-      "",
-      "```",
-      result.prompt,
-      "```",
-      "",
-      "</details>",
-      "",
-    );
+    lines.push("");
   }
 
   // Append full agent output for debugging

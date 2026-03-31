@@ -106,7 +106,8 @@ describe("buildPrompt", () => {
       screenshotsDir: "/tmp",
       scenarioMappings: mappings,
     });
-    expect(prompt).toContain("playwright-cli open --headless");
+    expect(prompt).toContain("`playwright-cli open`");
+    expect(prompt).not.toContain("open --headed`");
     expect(prompt).not.toContain("{BROWSER_OPEN}");
   });
 
@@ -119,9 +120,7 @@ describe("buildPrompt", () => {
       scenarioMappings: mappings,
       headed: true,
     });
-    // The process section should use `playwright-cli open` without --headless
-    expect(prompt).toContain("`playwright-cli open`");
-    expect(prompt).not.toContain("open --headless`");
+    expect(prompt).toContain("playwright-cli open --headed");
   });
 
   test("includes playwright-cli command reference", () => {

@@ -5,6 +5,8 @@ import { tmpdir } from "os";
 import {
   generateRunId,
   initResultsFile,
+  appendDomainHeader,
+  appendScenarioResult,
   appendDomainResults,
   appendSummary,
 } from "./reporter.js";
@@ -50,57 +52,51 @@ describe("appendDomainResults", () => {
     resultsPath = result.resultsPath;
   }
 
-  test("writes passed/failed/skipped counts", () => {
+  test("streams scenario results as they arrive", () => {
     setup();
-    const result: DomainResult = {
-      domain: "Auth",
-      scenarios: [
-        { name: "Login", status: "pass", details: "OK" },
-        { name: "Logout", status: "fail", details: "Button missing" },
-      ],
-      rawOutput: "",
-      isError: false,
-    };
+    appendDomainHeader(resultsPath, "Auth");
+    appendScenarioResult(resultsPath, {
+      name: "Login",
+      status: "pass",
+      details: "OK",
+    });
+    appendScenarioResult(resultsPath, {
+      name: "Logout",
+      status: "fail",
+      details: "Button missing",
+    });
 
-    appendDomainResults(resultsPath, result);
     const content = readFileSync(resultsPath, "utf-8");
-    expect(content).toContain("Auth — 1 passed, 1 failed");
+    expect(content).toContain("## Auth");
     expect(content).toContain("✓ Login");
     expect(content).toContain("✗ Logout");
+    expect(content).toContain("→ Button missing");
   });
 
-  test("writes not_executed scenarios", () => {
+  test("streams not_executed scenarios", () => {
     setup();
-    const result: DomainResult = {
-      domain: "OD",
-      scenarios: [
-        {
-          name: "Création d'une OD",
-          status: "not_executed",
-          details: "Agent returned empty output",
-        },
-        {
-          name: "Suppression d'une OD",
-          status: "not_executed",
-          details: "Agent returned empty output",
-        },
-      ],
-      rawOutput: "",
-      isError: false,
-    };
+    appendDomainHeader(resultsPath, "OD");
+    appendScenarioResult(resultsPath, {
+      name: "Création d'une OD",
+      status: "not_executed",
+      details: "Agent returned empty output",
+    });
+    appendScenarioResult(resultsPath, {
+      name: "Suppression d'une OD",
+      status: "not_executed",
+      details: "Agent returned empty output",
+    });
 
-    appendDomainResults(resultsPath, result);
     const content = readFileSync(resultsPath, "utf-8");
-    expect(content).toContain(
-      "OD — 0 passed, 0 failed, 0 skipped, 2 not executed",
-    );
+    expect(content).toContain("## OD");
     expect(content).toContain("✗ Création d'une OD (not executed)");
     expect(content).toContain("→ Agent returned empty output");
     expect(content).toContain("✗ Suppression d'une OD (not executed)");
   });
 
-  test("writes error domain", () => {
+  test("writes error info and metadata via appendDomainResults", () => {
     setup();
+    appendDomainHeader(resultsPath, "Broken");
     const result: DomainResult = {
       domain: "Broken",
       scenarios: [],
@@ -110,7 +106,7 @@ describe("appendDomainResults", () => {
 
     appendDomainResults(resultsPath, result);
     const content = readFileSync(resultsPath, "utf-8");
-    expect(content).toContain("Broken — ERROR");
+    expect(content).toContain("Agent crashed or returned no results");
     expect(content).toContain("some error output");
   });
 });

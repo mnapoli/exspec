@@ -13,6 +13,9 @@ import { runDomain, type RunCallbacks } from "./runner.js";
 import {
   generateRunId,
   initResultsFile,
+  appendDomainHeader,
+  appendScenarioResult,
+  appendActivity,
   appendDomainResults,
   appendSummary,
 } from "./reporter.js";
@@ -203,12 +206,16 @@ for (const [domain, domainFeatures] of domains) {
   // Track scenarios displayed in real-time to avoid duplication
   const displayedScenarios = new Set<string>();
 
+  appendDomainHeader(resultsPath, domain);
+
   const callbacks: RunCallbacks = {
     onScenarioResult: (s) => {
       displayedScenarios.add(s.name);
       printScenarioResult(s);
+      appendScenarioResult(resultsPath, s);
     },
     onActivity: (message) => {
+      appendActivity(resultsPath, message);
       if (verbose) {
         console.log(`      ${dim(message)}`);
       }
@@ -232,6 +239,7 @@ for (const [domain, domainFeatures] of domains) {
   for (const s of result.scenarios) {
     if (!displayedScenarios.has(s.name)) {
       printScenarioResult(s);
+      appendScenarioResult(resultsPath, s);
     }
   }
 

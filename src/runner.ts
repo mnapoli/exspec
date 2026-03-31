@@ -142,11 +142,7 @@ interface ClaudeOutput {
 
 function formatToolCall(name: string, input: Record<string, unknown>): string {
   if (name === "Bash") {
-    const cmd = (input.command as string) ?? "";
-    // Strip "playwright-cli " prefix for readability
-    return cmd.startsWith("playwright-cli ")
-      ? truncate(cmd.slice("playwright-cli ".length), 80)
-      : truncate(cmd, 80);
+    return truncate((input.command as string) ?? "", 80);
   }
 
   // MCP exspec tools
@@ -203,6 +199,14 @@ function invokeClaude(
     let cost: number | undefined;
     let duration: number | undefined;
     const activityLog: string[] = [];
+    const startTime = Date.now();
+
+    function elapsed(): string {
+      const secs = Math.round((Date.now() - startTime) / 1000);
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return m > 0 ? `${m}m${String(s).padStart(2, "0")}s` : `${s}s`;
+    }
 
     child.stdout.on("data", (data: Buffer) => {
       buffer += data.toString();
@@ -233,12 +237,21 @@ function invokeClaude(
           if (!content) break;
 
           for (const block of content) {
-            if (block.type === "tool_use") {
+            if (block.type === "text") {
+              const text = (block.text as string) ?? "";
+              const firstLine = text.split("\n").find((l) => l.trim())?.trim();
+              if (firstLine) {
+                const entry = `[${elapsed()}] 💭 ${truncate(firstLine, 120)}`;
+                activityLog.push(entry);
+                callbacks.onActivity?.(entry);
+              }
+            } else if (block.type === "tool_use") {
               const toolName = block.name as string;
               const input = (block.input as Record<string, unknown>) ?? {};
               const entry = formatToolCall(toolName, input);
-              activityLog.push(entry);
-              callbacks.onActivity?.(entry);
+              const timedEntry = `[${elapsed()}] ${entry}`;
+              activityLog.push(timedEntry);
+              callbacks.onActivity?.(timedEntry);
 
               // Emit real-time scenario result (name holds the id here,
               // resolved to actual name by wrappedCallbacks)

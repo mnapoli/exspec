@@ -43,8 +43,8 @@ export function buildPrompt(options: {
     : `ALL\n\n${scenarioList}`;
 
   const browserOpen = options.headed
-    ? "playwright-cli open"
-    : "playwright-cli open --headless";
+    ? "playwright-cli open --headed"
+    : "playwright-cli open";
 
   template = template
     .replaceAll("{FEATURE_CONTENT}", featureContent)
