@@ -304,6 +304,7 @@ function invokeClaude(
                   name: input.id as string,
                   status: input.status as "pass" | "fail" | "skip",
                   details: input.details as string | undefined,
+                  recommendation: input.recommendation as string | undefined,
                 });
               }
             }
@@ -356,6 +357,7 @@ interface JsonlResult {
   id: string;
   status: "pass" | "fail" | "skip";
   details?: string;
+  recommendation?: string;
 }
 
 export function readJsonlResults(path: string): JsonlResult[] {
@@ -367,9 +369,9 @@ export function readJsonlResults(path: string): JsonlResult[] {
   const results: JsonlResult[] = [];
   for (const line of content.split("\n")) {
     try {
-      const { id, status, details } = JSON.parse(line);
+      const { id, status, details, recommendation } = JSON.parse(line);
       if (id && status) {
-        results.push({ id, status, details });
+        results.push({ id, status, details, recommendation });
       }
     } catch {
       // Skip malformed lines
@@ -401,6 +403,7 @@ export function reconcileScenarios(
       name: idToName.get(r.id)!,
       status: r.status,
       details: r.details,
+      recommendation: r.recommendation,
     }));
 
   const missingMappings = mappings.filter((m) => !reportedIds.has(m.id));

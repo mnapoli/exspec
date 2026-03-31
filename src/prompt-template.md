@@ -94,6 +94,12 @@ After executing each scenario, report the result immediately by calling the `mcp
     **Observed**: Actual values seen in the UI
   - SKIP — reason the scenario was skipped
 
+- **recommendation** (optional): suggest how the test could be improved when you had to make assumptions, guess values, or work around ambiguous steps. Examples:
+  - A step references a single "address" field but the form has separate street/city/postal code fields
+  - Test data is ambiguous or doesn't match the UI structure
+  - A step could be more specific to avoid guesswork
+  Only include recommendations when genuinely useful — don't flag every scenario.
+
 Call this tool once per scenario, right after executing it. Do not batch results at the end.
 
 ## playwright-cli command reference

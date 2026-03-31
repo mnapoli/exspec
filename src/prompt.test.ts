@@ -145,6 +145,7 @@ describe("buildPrompt", () => {
       scenarioMappings: mappings,
     });
     expect(prompt).toContain("mcp__exspec__report_scenario_result");
+    expect(prompt).toContain("recommendation");
   });
 
   test("joins multiple features with separator", () => {

@@ -73,6 +73,23 @@ describe("appendDomainResults", () => {
     expect(content).toContain("→ Button missing");
   });
 
+  test("streams recommendation with scenario result", () => {
+    setup();
+    appendDomainHeader(resultsPath, "Auth");
+    appendScenarioResult(resultsPath, {
+      name: "Login",
+      status: "pass",
+      details: "OK",
+      recommendation: "Consider splitting address into separate fields",
+    });
+
+    const content = readFileSync(resultsPath, "utf-8");
+    expect(content).toContain("✓ Login");
+    expect(content).toContain(
+      "**Recommendation**: Consider splitting address into separate fields",
+    );
+  });
+
   test("streams not_executed scenarios", () => {
     setup();
     appendDomainHeader(resultsPath, "OD");

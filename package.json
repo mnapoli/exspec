@@ -13,7 +13,7 @@
     "build": "tsc && cp src/prompt-template.md dist/ && node scripts/add-shebang.js",
     "prepublishOnly": "npm run build",
     "dev": "tsx src/cli.ts",
-    "fixtures": "npm run build && cd fixtures && node ../dist/cli.js",
+    "fixtures": "npm run build && cd fixtures && node ../dist/cli.js --verbose",
     "test": "vitest run",
     "lint": "eslint src",
     "format": "prettier --write src",

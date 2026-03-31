@@ -106,6 +106,9 @@ npx exspec --fail-fast
 
 # Run with visible browser (for debugging)
 npx exspec --headed
+
+# Show agent activity in real-time (tool calls, thinking)
+npx exspec --verbose
 ```
 
 ## Configuration
@@ -172,6 +175,8 @@ The agent is sandboxed to browser-only interaction. If a scenario can't be verif
 
 ## Results
 
-Results are written to `features/exspec/{YYYY-MM-DD-HHmm}.md` with failure screenshots.
+Results are written to `features/exspec/{YYYY-MM-DD-HHmm}.md` with failure screenshots and a real-time activity log (tool calls, timestamps, token usage).
+
+When the agent encounters ambiguous test steps or has to make assumptions, it may include **recommendations** for improving the test — shown in the CLI summary and the results file.
 
 The CLI exits with code `1` on failures (CI-friendly).

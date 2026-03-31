@@ -73,6 +73,22 @@ describe("readJsonlResults", () => {
     unlinkSync(path);
   });
 
+  test("parses recommendation field", () => {
+    const path = tmpFile(
+      '{"id":"s1","status":"pass","details":"OK","recommendation":"Split address fields"}\n',
+    );
+    const results = readJsonlResults(path);
+    expect(results).toEqual([
+      {
+        id: "s1",
+        status: "pass",
+        details: "OK",
+        recommendation: "Split address fields",
+      },
+    ]);
+    unlinkSync(path);
+  });
+
   test("returns empty array for missing file", () => {
     expect(readJsonlResults("/tmp/nonexistent-file.jsonl")).toEqual([]);
   });
@@ -124,9 +140,34 @@ describe("reconcileScenarios", () => {
     ];
     const result = reconcileScenarios(reported, mappings, "output");
     expect(result).toEqual([
-      { name: "Login", status: "pass", details: "OK" },
-      { name: "Logout", status: "fail", details: "Error" },
+      {
+        name: "Login",
+        status: "pass",
+        details: "OK",
+        recommendation: undefined,
+      },
+      {
+        name: "Logout",
+        status: "fail",
+        details: "Error",
+        recommendation: undefined,
+      },
     ]);
+  });
+
+  test("preserves recommendation in reconciled results", () => {
+    const reported = [
+      {
+        id: "s1",
+        status: "pass" as const,
+        details: "OK",
+        recommendation: "Split address fields",
+      },
+      { id: "s2", status: "pass" as const, details: "OK" },
+    ];
+    const result = reconcileScenarios(reported, mappings, "output");
+    expect(result[0].recommendation).toBe("Split address fields");
+    expect(result[1].recommendation).toBeUndefined();
   });
 
   test("adds not_executed for missing scenarios with empty output", () => {

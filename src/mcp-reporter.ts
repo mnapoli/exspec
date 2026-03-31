@@ -25,9 +25,18 @@ server.tool(
       .describe(
         "Details: what was verified (pass), error info (fail), or reason (skip)",
       ),
+    recommendation: z
+      .string()
+      .optional()
+      .describe(
+        "Optional suggestion to improve the test when you had to make assumptions or work around ambiguity",
+      ),
   },
-  async ({ id, status, details }) => {
-    appendFileSync(outputPath, JSON.stringify({ id, status, details }) + "\n");
+  async ({ id, status, details, recommendation }) => {
+    appendFileSync(
+      outputPath,
+      JSON.stringify({ id, status, details, recommendation }) + "\n",
+    );
     return {
       content: [{ type: "text", text: `Recorded: ${id} → ${status}` }],
     };

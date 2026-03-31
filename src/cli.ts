@@ -27,7 +27,8 @@ const projectRoot = resolve(process.cwd());
 const nc = "NO_COLOR" in process.env;
 const green = (s: string) => (nc ? s : `\x1b[32m${s}\x1b[0m`);
 const red = (s: string) => (nc ? s : `\x1b[31m${s}\x1b[0m`);
-const dim = (s: string) => (nc ? s : `\x1b[2m${s}\x1b[0m`);
+const dim = (s: string) =>
+  nc ? s : `\x1b[38;2;150;150;150m${s}\x1b[0m`;
 const bold = (s: string) => (nc ? s : `\x1b[1m${s}\x1b[0m`);
 
 function extractFailInfo(details?: string): {
@@ -165,11 +166,17 @@ console.log(
 // Execute tests domain by domain
 const totals: RunTotals = { passed: 0, failed: 0, skipped: 0, notExecuted: 0 };
 
+const recommendations: { name: string; recommendation: string }[] = [];
+
 function printScenarioResult(s: {
   name: string;
   status: string;
   details?: string;
+  recommendation?: string;
 }) {
+  if (s.recommendation) {
+    recommendations.push({ name: s.name, recommendation: s.recommendation });
+  }
   if (s.status === "pass") {
     totals.passed++;
     console.log(`    ${green("✓")} ${s.name}`);
@@ -264,6 +271,13 @@ const minutes = Math.floor(elapsed / 60);
 const seconds = elapsed % 60;
 const duration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 console.log(`Duration: ${duration}`);
+if (recommendations.length > 0) {
+  console.log(`\nRecommendations:`);
+  for (const r of recommendations) {
+    console.log(`  ${r.name}`);
+    console.log(`    ${dim(r.recommendation)}`);
+  }
+}
 console.log(`\nDetailed results in features/exspec/${runId}.md`);
 
 const hasFailures = totals.failed > 0 || totals.notExecuted > 0;

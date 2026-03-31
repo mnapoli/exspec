@@ -58,7 +58,12 @@ export function appendDomainHeader(
 
 export function appendScenarioResult(
   resultsPath: string,
-  scenario: { name: string; status: string; details?: string },
+  scenario: {
+    name: string;
+    status: string;
+    details?: string;
+    recommendation?: string;
+  },
 ): void {
   const lines: string[] = [];
   if (scenario.status === "pass") {
@@ -81,6 +86,9 @@ export function appendScenarioResult(
     if (scenario.details) {
       lines.push(`    → ${scenario.details.split("\n")[0]}`);
     }
+  }
+  if (scenario.recommendation) {
+    lines.push(`    > **Recommendation**: ${scenario.recommendation}`);
   }
   lines.push("");
   appendFileSync(resultsPath, lines.join("\n"));

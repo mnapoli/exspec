@@ -15,6 +15,7 @@ export interface ScenarioResult {
   name: string;
   status: "pass" | "fail" | "skip" | "not_executed";
   details?: string;
+  recommendation?: string;
 }
 
 export interface DomainResult {
