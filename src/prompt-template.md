@@ -75,6 +75,7 @@ Between scenarios, start fresh if needed (create new test data).
 ### 5. Error detection
 
 After each significant action, check the browser for error indicators:
+
 - Error pages (500, 404, etc.)
 - Error toasts or notification banners
 - Form validation messages
@@ -98,7 +99,7 @@ After executing each scenario, report the result immediately by calling the `mcp
   - A step references a single "address" field but the form has separate street/city/postal code fields
   - Test data is ambiguous or doesn't match the UI structure
   - A step could be more specific to avoid guesswork
-  Only include recommendations when genuinely useful — don't flag every scenario.
+    Only include recommendations when genuinely useful — don't flag every scenario.
 
 Call this tool once per scenario, right after executing it. Do not batch results at the end.
 

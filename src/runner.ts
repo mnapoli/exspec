@@ -184,18 +184,14 @@ function invokeClaude(
   callbacks: RunCallbacks = {},
 ): Promise<ClaudeOutput> {
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      "claude",
-      buildClaudeArgs(prompt, mcpConfigPath),
-      {
-        cwd,
-        stdio: ["ignore", "pipe", "pipe"],
-        env: {
-          ...process.env,
-          PATH: playwrightCliBinDir + ":" + (process.env.PATH ?? ""),
-        },
+    const child = spawn("claude", buildClaudeArgs(prompt, mcpConfigPath), {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        PATH: playwrightCliBinDir + ":" + (process.env.PATH ?? ""),
       },
-    );
+    });
 
     let buffer = "";
     let resultText = "";
@@ -262,9 +258,7 @@ function invokeClaude(
         case "assistant": {
           // Track token usage
           const message = event.message as Record<string, unknown> | undefined;
-          const usage = message?.usage as
-            | Record<string, number>
-            | undefined;
+          const usage = message?.usage as Record<string, number> | undefined;
           if (usage) {
             totalTokens =
               (usage.input_tokens ?? 0) +

@@ -27,8 +27,7 @@ const projectRoot = resolve(process.cwd());
 const nc = "NO_COLOR" in process.env;
 const green = (s: string) => (nc ? s : `\x1b[32m${s}\x1b[0m`);
 const red = (s: string) => (nc ? s : `\x1b[31m${s}\x1b[0m`);
-const dim = (s: string) =>
-  nc ? s : `\x1b[38;2;150;150;150m${s}\x1b[0m`;
+const dim = (s: string) => (nc ? s : `\x1b[38;2;150;150;150m${s}\x1b[0m`);
 const bold = (s: string) => (nc ? s : `\x1b[1m${s}\x1b[0m`);
 
 function extractFailInfo(details?: string): {

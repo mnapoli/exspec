@@ -49,10 +49,7 @@ export function initResultsFile(
   return { resultsPath, screenshotsDir };
 }
 
-export function appendDomainHeader(
-  resultsPath: string,
-  domain: string,
-): void {
+export function appendDomainHeader(resultsPath: string, domain: string): void {
   appendFileSync(resultsPath, `\n## ${domain}\n\n`);
 }
 
