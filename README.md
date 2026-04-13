@@ -156,6 +156,18 @@ setup:
 ---
 ```
 
+### Domain timeout
+
+Scenarios are grouped by subdirectory (domain) and each domain runs as a single agent session. Set `domainTimeout` (in minutes) to cap how long a domain can run:
+
+```markdown
+---
+domainTimeout: 10
+---
+```
+
+If the timeout is reached, any unreported scenarios are marked as `not_executed`. Scenarios already reported before the timeout are preserved.
+
 ### Environment variables
 
 If your project has a `.env` file, exspec loads it automatically. You can reference variables in `exspec.md` with `$VAR` or `${VAR}` syntax:

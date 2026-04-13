@@ -71,6 +71,7 @@ Between scenarios, start fresh if needed (create new test data).
 - If a step fails, take a screenshot and save it to `{SCREENSHOTS_DIR}/{scenario-slug}.png`. Use `playwright-cli screenshot --filename={SCREENSHOTS_DIR}/{scenario-slug}.png`.
 - Continue with subsequent steps in the same scenario if possible.
 - If a setup step fails, mark the whole scenario as SKIP.
+- **Do not rabbit-hole on setup.** If a Given step requires something the browser UI doesn't support (e.g., backdating entries, direct database access, manipulating server state), mark the scenario as SKIP immediately. Do not spend more than a few attempts on a single step — if the UI clearly doesn't offer a way to accomplish it, move on.
 
 ### 5. Error detection
 

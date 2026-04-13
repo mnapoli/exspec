@@ -139,4 +139,32 @@ content`;
 
     expect(() => parseConfigFile(raw)).toThrow("expected string or string[]");
   });
+
+  test("parses domainTimeout as number", () => {
+    const raw = `---
+domainTimeout: 10
+---
+content`;
+
+    const { config } = parseConfigFile(raw);
+    expect(config.domainTimeout).toBe(10);
+  });
+
+  test("throws on invalid domainTimeout", () => {
+    const raw = `---
+domainTimeout: "fast"
+---
+content`;
+
+    expect(() => parseConfigFile(raw)).toThrow("Invalid domainTimeout value");
+  });
+
+  test("throws on zero domainTimeout", () => {
+    const raw = `---
+domainTimeout: 0
+---
+content`;
+
+    expect(() => parseConfigFile(raw)).toThrow("Invalid domainTimeout value");
+  });
 });

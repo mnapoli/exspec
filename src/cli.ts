@@ -234,6 +234,7 @@ for (const [domain, domainFeatures] of domains) {
     projectRoot,
     scenarioMappings,
     callbacks,
+    config.domainTimeout,
   );
   appendDomainResults(resultsPath, result);
 

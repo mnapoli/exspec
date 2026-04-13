@@ -2,9 +2,10 @@ import { parse as parseYaml } from "yaml";
 
 export interface ExspecConfig {
   setup?: string[];
+  domainTimeout?: number; // per-domain timeout in minutes
 }
 
-const KNOWN_KEYS = new Set(["setup"]);
+const KNOWN_KEYS = new Set(["setup", "domainTimeout"]);
 
 interface RawConfig {
   setup?: unknown;
@@ -61,6 +62,15 @@ export function parseConfigFile(raw: string): {
 
   if (parsed.setup !== undefined) {
     config.setup = normalizeSetup(parsed.setup);
+  }
+
+  if (parsed.domainTimeout !== undefined) {
+    if (typeof parsed.domainTimeout !== "number" || parsed.domainTimeout <= 0) {
+      throw new Error(
+        `Invalid domainTimeout value: expected positive number (minutes), got ${JSON.stringify(parsed.domainTimeout)}`,
+      );
+    }
+    config.domainTimeout = parsed.domainTimeout;
   }
 
   return { config, content };

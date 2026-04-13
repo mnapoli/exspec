@@ -53,6 +53,7 @@ export async function runDomain(
   projectRoot: string,
   scenarioMappings: ScenarioMapping[],
   callbacks: RunCallbacks = {},
+  timeoutMinutes?: number,
 ): Promise<DomainResult> {
   const id = randomBytes(6).toString("hex");
   const jsonlPath = join(tmpdir(), `exspec-results-${id}.jsonl`);
@@ -77,6 +78,7 @@ export async function runDomain(
       projectRoot,
       mcpConfigPath,
       wrappedCallbacks,
+      timeoutMinutes,
     );
     const reported = readJsonlResults(jsonlPath);
     const scenarios = reconcileScenarios(reported, scenarioMappings, result);
@@ -182,6 +184,7 @@ function invokeClaude(
   cwd: string,
   mcpConfigPath: string,
   callbacks: RunCallbacks = {},
+  timeoutMinutes?: number,
 ): Promise<ClaudeOutput> {
   return new Promise((resolve, reject) => {
     const child = spawn("claude", buildClaudeArgs(prompt, mcpConfigPath), {
@@ -200,6 +203,15 @@ function invokeClaude(
     const activityLog: string[] = [];
     const startTime = Date.now();
     let totalTokens = 0;
+    let timedOut = false;
+
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+    if (timeoutMinutes) {
+      timeoutTimer = setTimeout(() => {
+        timedOut = true;
+        child.kill("SIGTERM");
+      }, timeoutMinutes * 60_000);
+    }
 
     function elapsed(): string {
       const secs = Math.round((Date.now() - startTime) / 1000);
@@ -323,6 +335,8 @@ function invokeClaude(
     });
 
     child.on("close", (code) => {
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+
       // Process remaining buffer
       if (buffer.trim()) {
         try {
@@ -333,7 +347,9 @@ function invokeClaude(
         }
       }
 
-      if (code !== 0) {
+      if (timedOut) {
+        reject(new Error(`Timed out after ${timeoutMinutes} minute(s)`));
+      } else if (code !== 0) {
         const detail = resultText || truncate(stderr) || `exit code ${code}`;
         reject(new Error(detail));
       } else {
